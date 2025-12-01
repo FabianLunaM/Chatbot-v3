@@ -1,0 +1,25 @@
+{
+  "build": {
+    "builder": "RAILPACK",
+    "nixpacksPlan": {
+      "phases": {
+        "install": {
+          "cmds": ["npm install"]
+        },
+        "build": {
+          "cmds": []
+        },
+        "start": {
+          "cmds": ["npm run start"]
+        }
+      }
+    }
+  },
+  "deploy": {
+    "startCommand": "node src/server.js",
+    "healthcheckPath": "/",
+    "healthcheckProtocol": "HTTP",
+    "restartPolicyType": "ON_FAILURE",
+    "healthcheckTimeout": 30
+  }
+}

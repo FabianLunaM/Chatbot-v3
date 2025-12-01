@@ -13,6 +13,7 @@ app.use(express.json());
 //});
 console.log("servidor Amalgama 🚀");
 const PORT = process.env.PORT || 3000;
+const HOST = '0.0.0.0';
 app.listen(PORT, () => {
   console.log(`Servidor corriendo en puerto ${PORT}`);
 });
