@@ -1,3 +1,4 @@
+
 console.log("Iniciando servidor Amalgama 🚀");
 require('dotenv').config();
 const express = require('express');
@@ -9,7 +10,7 @@ app.use(express.json());
 
 // Health check para Railway
 app.get('/', (req, res) => {
-  res.status(200).send('Amalgama está vivo 🚀');
+  res.status(200).send('Ok');
 });
 
 const PORT = process.env.PORT || 3000;
