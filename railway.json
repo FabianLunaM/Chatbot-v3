@@ -1,19 +1,6 @@
 {
   "build": {
-    "builder": "RAILPACK",
-    "nixpacksPlan": {
-      "phases": {
-        "install": {
-          "cmds": ["npm install"]
-        },
-        "build": {
-          "cmds": []
-        },
-        "start": {
-          "cmds": ["npm run start"]
-        }
-      }
-    }
+    "builder": "RAILPACK"
   },
   "deploy": {
     "startCommand": "node src/server.js",
