@@ -8,10 +8,9 @@ app.use(cors());
 app.use(express.json());
 
 // Health check para Railway
-//app.get('/', (req, res) => {
-//  res.send('Amalgama está vivo 🚀');
-//});
-console.log("servidor Amalgama 🚀");
+app.get('/', (req, res) => {
+  res.send('Amalgama está vivo 🚀');
+});
 const PORT = process.env.PORT || 3000;
 const HOST = '0.0.0.0';
 app.listen(PORT, () => {
