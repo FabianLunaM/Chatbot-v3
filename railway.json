@@ -4,10 +4,9 @@
     "builder": "RAILPACK"
   },
   "deploy": {
-    "startCommand": "node src/server.js",
+    "startCommand": "node server.js",
     "healthcheckPath": "/",
     "healthcheckProtocol": "HTTP",
-    "healthcheckTimeout": 30,
     "restartPolicyType": "NEVER"
   }
 }
