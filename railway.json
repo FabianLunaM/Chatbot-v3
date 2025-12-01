@@ -1,3 +1,4 @@
+
 {
   "build": {
     "builder": "RAILPACK"
@@ -6,7 +7,7 @@
     "startCommand": "node src/server.js",
     "healthcheckPath": "/",
     "healthcheckProtocol": "HTTP",
-    "restartPolicyType": "ON_FAILURE",
-    "healthcheckTimeout": 30
+    "healthcheckTimeout": 30,
+    "restartPolicyType": "NEVER"
   }
 }
