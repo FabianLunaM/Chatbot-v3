@@ -61,11 +61,12 @@ app.post('/webhook', async (req, res) => {
   console.log('Body recibido:', req.body);
 
   // Validar firma con el secret (puedes comentar esto temporalmente si quieres probar sin validación)
-  const signature = req.headers['x-wasender-signature'];
-  if (signature !== process.env.WASENDER_WEBHOOK_SECRET) {
-    console.error('❌ Firma inválida');
-    return res.status(401).send('Firma inválida');
-  }
+  //const signature = req.headers['x-wasender-signature'];
+  //if (signature !== process.env.WASENDER_WEBHOOK_SECRET) {
+  //  console.error('❌ Firma inválida');
+  //  return res.status(401).send('Firma inválida');
+  //}
+  
 
   // Adaptar según el formato real que envía WaSender
   const { phone, message, from, text } = req.body;
