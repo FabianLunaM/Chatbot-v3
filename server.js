@@ -56,19 +56,28 @@ app.post('/send-message', async (req, res) => {
 
 // ✅ Endpoint Webhook para recibir mensajes desde WaSender
 app.post('/webhook', async (req, res) => {
-  // Validar firma con el secret
+  // Log de depuración para ver qué llega
+  console.log('Headers recibidos:', req.headers);
+  console.log('Body recibido:', req.body);
+
+  // Validar firma con el secret (puedes comentar esto temporalmente si quieres probar sin validación)
   const signature = req.headers['x-wasender-signature'];
   if (signature !== process.env.WASENDER_WEBHOOK_SECRET) {
+    console.error('❌ Firma inválida');
     return res.status(401).send('Firma inválida');
   }
 
-  const { from, text } = req.body;
-  console.log(`📩 Mensaje recibido de ${from}: ${text}`);
+  // Adaptar según el formato real que envía WaSender
+  const { phone, message, from, text } = req.body;
+  const sender = phone || from;
+  const content = message || text;
+
+  console.log(`📩 Mensaje recibido de ${sender}: ${content}`);
 
   try {
     await pool.query(
       'INSERT INTO interactions (patient_id, message_in) VALUES ($1, $2)',
-      [null, text]
+      [null, content]
     );
     console.log('💾 Mensaje guardado en BD');
   } catch (err) {
