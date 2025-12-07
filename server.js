@@ -104,10 +104,17 @@ app.post('/webhook', async (req, res) => {
       let respuesta;
       if (count === 1) {
         // Primer contacto → saludo genérico
-        respuesta = "Hola 👋, gracias por escribir a Amalgama. ¿En qué podemos ayudarte?";
+        respuesta = `🦷✨ ¡Hola! Bienvenido(a) al Consultorio Dental Ortodent 💙 Tu sonrisa es nuestra prioridad 😁✨
+        Soy Amalgama, tu asistente virtual 🤖, y estoy aquí para ayudarte en lo que necesites.
+        👉 ¿Qué deseas hacer hoy?
+        1️⃣ 📅 Agendar una cita 2️⃣ 📖 Revisar tus citas agendadas 3️⃣ ❓💡 Preguntar o consultar sobre nuestros servicios
+
+       ✨ ¡Tu salud dental está en buenas manos!`;
       } else {
         // Contacto recurrente → saludo con nombre
-        respuesta = `Hola ${pushName || ''} 👋, bienvenido nuevamente a Amalgama. ¿Cómo podemos ayudarte hoy?`;
+        respuesta = `¡Hola! ${pushName || ''} 👋, bienvenido nuevamente. ¿Cómo podemos ayudarte hoy?
+         1️⃣ 📅 Agendar una cita 2️⃣ 📖 Revisar tus citas agendadas 3️⃣ ❓💡 Preguntar o consultar sobre nuestros servicios
+        ✨ ¡Gracias por contactarte con Amalgama!🤖`;
       }
 
       // Enviar respuesta automática
