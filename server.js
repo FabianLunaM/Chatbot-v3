@@ -79,7 +79,7 @@ app.post('/webhook', async (req, res) => {
     const msg = req.body.data.messages;
     sender = msg.remoteJid;
     content = msg.messageBody;
-    pushName = msg.pushName; // nombre del emisor
+    pushName = msg.pushName || ''; // nombre del emisor
   }
 
   console.log(`📩 Mensaje recibido de ${sender}: ${content}`);
@@ -115,9 +115,8 @@ app.post('/webhook', async (req, res) => {
         "✨ ¡Tu salud dental está en buenas manos!";
       
       } else {
-        
         // Contacto recurrente → saludo con nombre
-        respuesta = `¡Hola! ${pushName || ''} 👋, bienvenido nuevamente. Te saluda Amalgama, tu asistente virtual🤖\n\n`+
+        respuesta = `¡Hola! ${pushName} 👋, bienvenido nuevamente. Te saluda Amalgama, tu asistente virtual🤖\n\n`+
         "👉 ¿Qué deseas hacer hoy?\n\n" +
         "1️⃣ 📅 Agendar una cita\n" +
         "2️⃣ 📖 Revisar tus citas agendadas\n" +
