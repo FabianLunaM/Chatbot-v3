@@ -66,7 +66,7 @@ app.post('/webhook', async (req, res) => {
     return res.status(401).send('Firma inválida');
   }
 
-  let sender, content;
+  let sender, content, pushName;
 
   // Caso: test webhook
   if (req.body.event === 'webhook.test' && req.body.data?.message) {
@@ -79,20 +79,52 @@ app.post('/webhook', async (req, res) => {
     const msg = req.body.data.messages;
     sender = msg.remoteJid;
     content = msg.messageBody;
+    pushName = msg.pushName; // nombre del emisor
   }
 
   console.log(`📩 Mensaje recibido de ${sender}: ${content}`);
 
   try {
-    if (content) {
+    if (content && sender) {
+      // Guardar interacción en BD
       await pool.query(
-        'INSERT INTO interactions (patient_id, message_in) VALUES ($1, $2)',
-        [null, content]
+        'INSERT INTO interactions (patient_id, message_in, sender) VALUES ($1, $2, $3)',
+        [null, content, sender]
       );
       console.log('💾 Mensaje guardado en BD');
+
+      // Verificar si el número ya existe en la BD
+      const check = await pool.query(
+        'SELECT COUNT(*) FROM interactions WHERE sender = $1',
+        [sender]
+      );
+
+      const count = parseInt(check.rows[0].count, 10);
+
+      let respuesta;
+      if (count === 1) {
+        // Primer contacto → saludo genérico
+        respuesta = "Hola 👋, gracias por escribir a Amalgama. ¿En qué podemos ayudarte?";
+      } else {
+        // Contacto recurrente → saludo con nombre
+        respuesta = `Hola ${pushName || ''} 👋, bienvenido nuevamente a Amalgama. ¿Cómo podemos ayudarte hoy?`;
+      }
+
+      // Enviar respuesta automática
+      await axios.post(
+        `${process.env.WASENDER_API_URL}/send-message`,
+        { to: sender, text: respuesta },
+        {
+          headers: {
+            Authorization: `Bearer ${process.env.WASENDER_API_KEY}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+      console.log(`🤖 Respuesta enviada a ${sender}`);
     }
   } catch (err) {
-    console.error('❌ Error guardando mensaje en BD:', err);
+    console.error('❌ Error en webhook:', err);
   }
 
   res.send('ok');
