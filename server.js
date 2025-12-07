@@ -103,29 +103,24 @@ app.post('/webhook', async (req, res) => {
 
       let respuesta;
       if (count === 1) {
-        
         // Primer contacto → saludo genérico
-        respuesta = `🦷✨ ¡Hola! Bienvenido(a) al Consultorio Dental Ortodent 💙 Tu sonrisa es nuestra prioridad 😁✨
-        Soy Amalgama, tu asistente virtual 🤖, y estoy aquí para ayudarte en lo que necesites.
-       
-👉 ¿Qué deseas hacer hoy?
-       
- 1️⃣ 📅 Agendar una cita
- 2️⃣ 📖 Revisar tus citas agendadas
- 3️⃣ ❓💡 Preguntar o consultar sobre nuestros servicios
-
-✨ ¡Tu salud dental está en buenas manos!`;
-  } else {
+        respuesta = 
+        "🦷✨ ¡Hola! Bienvenido(a) al Consultorio Dental Ortodent 💙\n" +
+        "Tu sonrisa es nuestra prioridad 😁✨\n\n" +
+        "Soy Amalgama, tu asistente virtual 🤖💬, y estoy aquí para ayudarte.\n\n" +
+        "👉 ¿Qué deseas hacer hoy?\n\n" +
+        "1️⃣ 📅 Agendar una cita\n" +
+        "2️⃣ 📖 Revisar tus citas agendadas\n" +
+        "3️⃣ ❓💡 Preguntar o consultar sobre nuestros servicios\n\n" +
+        "✨ ¡Tu salud dental está en buenas manos!";
+      } else {
         // Contacto recurrente → saludo con nombre
-        respuesta = `¡Hola! ${pushName || ''} 👋, bienvenido nuevamente. Te saluda Amalgama, tu asistente virtual🤖
-        
-👉¿Cómo podemos ayudarte hoy?
-
- 1️⃣ 📅 Agendar una cita
- 2️⃣ 📖 Revisar tus citas agendadas
- 3️⃣ ❓💡 Preguntar o consultar sobre nuestros servicios
-       
-✨ Tu sonrisa es nuestra prioridad 😁`;
+        respuesta = "¡Hola! ${pushName || ''} 👋, bienvenido nuevamente. Te saluda Amalgama, tu asistente virtual🤖\n\n"+
+        "👉 ¿Qué deseas hacer hoy?\n\n" +
+        "1️⃣ 📅 Agendar una cita\n" +
+        "2️⃣ 📖 Revisar tus citas agendadas\n" +
+        "3️⃣ ❓💡 Preguntar o consultar sobre nuestros servicios\n\n" +
+        "✨ Tu sonrisa es nuestra prioridad 😁";
       }
 
       // Enviar respuesta automática
