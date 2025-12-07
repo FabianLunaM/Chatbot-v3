@@ -1,6 +1,5 @@
 console.log("Iniciando servidor Amalgama 🚀");
 
-
 const express = require('express');
 const cors = require('cors');
 const { Pool } = require('pg');
@@ -8,10 +7,14 @@ const axios = require('axios');
 const agenda = require('./functions/agendar'); // 👈 Importamos la lógica de agendar
 console.log("Agenda cargada:", agenda);
 
-
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+// Helper para respetar rate limit
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
 
 // Configuración de conexión a PostgreSQL en Railway
 const pool = new Pool({
@@ -41,6 +44,8 @@ app.get('/db-test', async (req, res) => {
 app.post('/send-message', async (req, res) => {
   const { to, text } = req.body;
   try {
+    // Esperar 5 segundos antes de enviar
+    await sleep(5000);
     const response = await axios.post(
       `${process.env.WASENDER_API_URL}/send-message`,
       { to, text },
@@ -133,7 +138,8 @@ app.post('/webhook', async (req, res) => {
         }
       }
 
-      // Enviar respuesta automática
+      // Esperar 5 segundos antes de enviar respuesta
+      await sleep(5000);
       await axios.post(
         `${process.env.WASENDER_API_URL}/send-message`,
         { to: sender, text: respuesta },
