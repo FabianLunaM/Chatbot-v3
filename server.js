@@ -113,9 +113,11 @@ app.post('/webhook', async (req, res) => {
         "2️⃣ 📖 Revisar tus citas agendadas\n" +
         "3️⃣ ❓💡 Preguntar o consultar sobre nuestros servicios\n\n" +
         "✨ ¡Tu salud dental está en buenas manos!";
+      
       } else {
+        
         // Contacto recurrente → saludo con nombre
-        respuesta = "¡Hola! ${pushName || ''} 👋, bienvenido nuevamente. Te saluda Amalgama, tu asistente virtual🤖\n\n"+
+        respuesta = `¡Hola! ${pushName || ''} 👋, bienvenido nuevamente. Te saluda Amalgama, tu asistente virtual🤖\n\n`+
         "👉 ¿Qué deseas hacer hoy?\n\n" +
         "1️⃣ 📅 Agendar una cita\n" +
         "2️⃣ 📖 Revisar tus citas agendadas\n" +
