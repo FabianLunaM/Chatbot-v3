@@ -5,8 +5,10 @@ const express = require('express');
 const cors = require('cors');
 const { Pool } = require('pg');
 const axios = require('axios');
-const agenda = require('./functions/agendar.js'); // 👈 Importamos la lógica de agendar
+const agenda = require('./functions/agendar'); // 👈 Importamos la lógica de agendar
 console.log("Agenda cargada:", agenda);
+
+
 
 const app = express();
 app.use(cors());
