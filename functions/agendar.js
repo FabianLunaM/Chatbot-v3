@@ -1,5 +1,6 @@
 // functions/agendar.js
 
+// Helper: validar horario permitido
 function validarHorario(fecha, horaStr) {
   const diaSemana = fecha.getDay(); // 0=Domingo, 6=Sábado
   const [h, m] = horaStr.split(':').map(Number);
@@ -16,6 +17,7 @@ function validarHorario(fecha, horaStr) {
   return false;
 }
 
+// Helper: sugerir horarios válidos cercanos
 async function horariosDisponibles(pool, fechaStr, horaStr) {
   const [dia, mes, anio] = fechaStr.split('/').map(Number);
   const fecha = new Date(anio, mes - 1, dia);
@@ -46,13 +48,13 @@ async function horariosDisponibles(pool, fechaStr, horaStr) {
 }
 
 module.exports = {
-  iniciarAgenda: async (sender, pool) => {
-    // Guardar estado inicial
-    await pool.query(
-      'UPDATE patients SET last_interaction = NOW() WHERE phone = $1',
-      [sender]
-    );
-    return "📝 Para agendar tu cita necesito tu nombre completo:";
+  iniciarAgenda: async () => {
+    return "📝 Para agendar tu cita necesito tu nombre completo.\n\n" +
+           "📌 Recuerda que nuestros horarios de atención son:\n" +
+           "🕘 Lunes a Viernes: 09:00 a 11:30 y 14:30 a 19:00\n" +
+           "🕘 Sábados: 09:00 a 11:30\n" +
+           "❌ Domingos no atendemos.\n\n" +
+           "Por favor escribe tu nombre completo:";
   },
 
   procesarPaso: async (sender, pool, paso, dato, contexto) => {
@@ -71,8 +73,19 @@ module.exports = {
       const [dia, mes, anio] = fechaStr.split('/').map(Number);
       const fecha = new Date(anio, mes - 1, dia);
 
+      // Validar horario permitido
       if (!validarHorario(fecha, horaStr)) {
-        return { siguiente: 'fecha_hora', respuesta: "❌ Ese horario no está disponible. Por favor elige otro dentro de los horarios permitidos." };
+        const sugerencias = await horariosDisponibles(pool, fechaStr, horaStr);
+        if (sugerencias.length > 0) {
+          return { siguiente: 'fecha_hora', respuesta: "❌ Ese horario no está dentro de la atención del consultorio.\n" +
+                                                       "👉 Horarios válidos cercanos disponibles: " + sugerencias.join(', ') };
+        } else {
+          return { siguiente: 'fecha_hora', respuesta: "❌ Ese horario no está dentro de la atención del consultorio.\n" +
+                                                       "👉 Recuerda nuestros horarios:\n" +
+                                                       "Lunes a Viernes: 09:00–11:30 y 14:30–19:00\n" +
+                                                       "Sábados: 09:00–11:30\n" +
+                                                       "Por favor elige otro horario válido." };
+        }
       }
 
       // Buscar paciente
@@ -86,6 +99,9 @@ module.exports = {
         patientId = nuevo.rows[0].id;
       } else {
         patientId = paciente.rows[0].id;
+        if (!paciente.rows[0].name && contexto.nombre) {
+          await pool.query('UPDATE patients SET name = $1 WHERE id = $2', [contexto.nombre, patientId]);
+        }
       }
 
       // Verificar disponibilidad
@@ -99,7 +115,11 @@ module.exports = {
         if (sugerencias.length > 0) {
           return { siguiente: 'fecha_hora', respuesta: `⚠️ Ese horario ya está ocupado. Horarios cercanos disponibles:\n${sugerencias.join(', ')}` };
         } else {
-          return { siguiente: 'fecha_hora', respuesta: "⚠️ Ese horario ya está ocupado y no hay espacios cercanos disponibles. Elige otro." };
+          return { siguiente: 'fecha_hora', respuesta: "⚠️ Ese horario ya está ocupado y no hay espacios cercanos disponibles.\n" +
+                                                       "👉 Recuerda nuestros horarios válidos:\n" +
+                                                       "Lunes a Viernes: 09:00–11:30 y 14:30–19:00\n" +
+                                                       "Sábados: 09:00–11:30\n" +
+                                                       "Por favor elige otro horario." };
         }
       }
 
