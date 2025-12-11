@@ -4,37 +4,29 @@ const express = require('express');
 const cors = require('cors');
 const { Pool } = require('pg');
 const axios = require('axios');
-const agenda = require('./functions/agendar'); // 👈 Importamos la lógica de agendar
-const { Validators } = require('./functions/validators'); // 👈 Importamos validadores
+const agenda = require('./functions/agendar'); // 👈 Lógica de agendar
+const { Validators } = require('./functions/validators'); // 👈 Validadores
 console.log("Agenda cargada:", agenda);
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Helper para respetar rate limit
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-// Configuración de conexión a PostgreSQL en Railway
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: {
-    rejectUnauthorized: false // necesario en Railway
-  }
+  ssl: { rejectUnauthorized: false }
 });
 
-// Contexto de agenda en memoria
-const agendaContext = {}; 
-// Estructura: { sender: { paso: 'nombre'|'motivo'|'fecha_hora', nombre:'', motivo:'' } }
+// Contextos en memoria
+const agendaContext = {}; // { sender: { paso, nombre, motivo } }
+const menuContext = {};   // { sender: true | undefined }  // true => ya mostramos el menú, ahora validamos opciones
 
-// Health check para Railway
-app.get('/', (req, res) => {
-  res.send('Ok');
-});
+app.get('/', (req, res) => res.send('Ok'));
 
-// Endpoint de prueba de BD
 app.get('/db-test', async (req, res) => {
   try {
     const result = await pool.query('SELECT NOW() as fecha');
@@ -45,20 +37,14 @@ app.get('/db-test', async (req, res) => {
   }
 });
 
-// ✅ Endpoint para enviar mensajes vía WaSender
 app.post('/send-message', async (req, res) => {
   const { to, text } = req.body;
   try {
-    await sleep(5000); // respetar límite
+    await sleep(5000);
     const response = await axios.post(
       `${process.env.WASENDER_API_URL}/send-message`,
       { to, text },
-      {
-        headers: {
-          Authorization: `Bearer ${process.env.WASENDER_API_KEY}`,
-          'Content-Type': 'application/json'
-        }
-      }
+      { headers: { Authorization: `Bearer ${process.env.WASENDER_API_KEY}`, 'Content-Type': 'application/json' } }
     );
     res.json(response.data);
   } catch (err) {
@@ -67,7 +53,6 @@ app.post('/send-message', async (req, res) => {
   }
 });
 
-// ✅ Endpoint Webhook para recibir mensajes desde WaSender
 app.post('/webhook', async (req, res) => {
   console.log('Headers recibidos:', req.headers);
   console.log('Body recibido:', req.body);
@@ -109,7 +94,7 @@ app.post('/webhook', async (req, res) => {
       let respuesta;
 
       if (count === 1) {
-        // Primer contacto → saludo genérico
+        // Primer contacto → saludo inicial
         respuesta =
           "🦷✨ ¡Hola! Bienvenido(a) al Consultorio Dental Ortodent 💙\n" +
           "Tu sonrisa es nuestra prioridad 😁✨\n\n" +
@@ -119,8 +104,10 @@ app.post('/webhook', async (req, res) => {
           "2️⃣ 📖 Revisar tus citas agendadas\n" +
           "3️⃣ ❓💡 Preguntar o consultar sobre nuestros servicios\n\n" +
           "✨ ¡Tu salud dental está en buenas manos!";
+        // Marcamos que ya mostramos menú; el próximo mensaje sí se valida
+        menuContext[sender] = true;
       } else {
-        // Flujo de agenda paso a paso
+        // Si está en flujo de agenda, procesar paso
         if (agendaContext[sender]) {
           const ctx = agendaContext[sender];
           const paso = ctx.paso;
@@ -128,31 +115,45 @@ app.post('/webhook', async (req, res) => {
           ctx.paso = result.siguiente;
           respuesta = result.respuesta;
           if (ctx.paso === 'completo') {
-            delete agendaContext[sender]; // limpiar contexto
+            delete agendaContext[sender];
+            delete menuContext[sender]; // liberamos el contexto de menú también
           }
         } else {
-          // Validar menú principal con Validators
-          const v = Validators.menuOption(content.trim(), ['1','2','3']);
-          if (!v.ok) {
-            respuesta = `❌ ${v.error}\n\n👉 Por favor responde con el número de la opción.`;
+          // Segundo contacto en adelante:
+          // Si NO hemos mostrado el menú esta sesión, lo mostramos con saludo personalizado.
+          if (!menuContext[sender]) {
+            respuesta =
+              `¡Hola ${pushName} 👋! Qué gusto saludarte nuevamente.\n\n` +
+              "👉 ¿Qué deseas hacer hoy?\n\n" +
+              "1️⃣ 📅 Agendar una cita\n" +
+              "2️⃣ 📖 Revisar tus citas agendadas\n" +
+              "3️⃣ ❓💡 Preguntar o consultar sobre nuestros servicios\n\n" +
+              "✨ Tu sonrisa es nuestra prioridad 😁";
+            menuContext[sender] = true; // el siguiente mensaje ya valida opciones
           } else {
-            switch (v.value) {
-              case '1':
-                agendaContext[sender] = { paso: 'nombre', nombre: '', motivo: '' };
-                respuesta = await agenda.iniciarAgenda(sender, pool);
-                break;
-              case '2':
-                respuesta = "📖 Aquí están tus citas agendadas (pendiente de implementar).";
-                break;
-              case '3':
-                respuesta = "💡 Puedes consultar nuestros servicios odontológicos. ¿Qué deseas saber?";
-                break;
+            // Ya mostramos el menú: validar opción
+            const v = Validators.menuOption(content.trim(), ['1','2','3']);
+            if (!v.ok) {
+              respuesta = `❌ ${v.error}\n\n👉 Por favor responde con el número de la opción.`;
+            } else {
+              switch (v.value) {
+                case '1':
+                  agendaContext[sender] = { paso: 'nombre', nombre: '', motivo: '' };
+                  respuesta = await agenda.iniciarAgenda(sender, pool);
+                  break;
+                case '2':
+                  respuesta = "📖 Aquí están tus citas agendadas (pendiente de implementar).";
+                  break;
+                case '3':
+                  respuesta = "💡 Puedes consultar nuestros servicios odontológicos. ¿Qué deseas saber?";
+                  break;
+              }
             }
           }
         }
       }
 
-      await sleep(5000); // respetar límite
+      await sleep(5000);
       await axios.post(
         `${process.env.WASENDER_API_URL}/send-message`,
         { to: sender, text: respuesta },
