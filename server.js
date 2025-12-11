@@ -5,6 +5,7 @@ const cors = require('cors');
 const { Pool } = require('pg');
 const axios = require('axios');
 const agenda = require('./functions/agendar'); // 👈 Importamos la lógica de agendar
+const { Validators } = require('./functions/validators'); // 👈 Importamos validadores
 console.log("Agenda cargada:", agenda);
 
 const app = express();
@@ -120,10 +121,7 @@ app.post('/webhook', async (req, res) => {
           "✨ ¡Tu salud dental está en buenas manos!";
       } else {
         // Flujo de agenda paso a paso
-        if (content.trim() === "1") {
-          agendaContext[sender] = { paso: 'nombre', nombre: '', motivo: '' };
-          respuesta = await agenda.iniciarAgenda(sender, pool);
-        } else if (agendaContext[sender]) {
+        if (agendaContext[sender]) {
           const ctx = agendaContext[sender];
           const paso = ctx.paso;
           const result = await agenda.procesarPaso(sender, pool, paso, content.trim(), ctx);
@@ -133,13 +131,24 @@ app.post('/webhook', async (req, res) => {
             delete agendaContext[sender]; // limpiar contexto
           }
         } else {
-          respuesta =
-            `¡Hola! ${pushName} 👋, bienvenido nuevamente. Te saluda Amalgama, tu asistente virtual🤖\n\n` +
-            "👉 ¿Qué deseas hacer hoy?\n\n" +
-            "1️⃣ 📅 Agendar una cita\n" +
-            "2️⃣ 📖 Revisar tus citas agendadas\n" +
-            "3️⃣ ❓💡 Preguntar o consultar sobre nuestros servicios\n\n" +
-            "✨ Tu sonrisa es nuestra prioridad 😁";
+          // Validar menú principal con Validators
+          const v = Validators.menuOption(content.trim(), ['1','2','3']);
+          if (!v.ok) {
+            respuesta = `❌ ${v.error}\n\n👉 Por favor responde con el número de la opción.`;
+          } else {
+            switch (v.value) {
+              case '1':
+                agendaContext[sender] = { paso: 'nombre', nombre: '', motivo: '' };
+                respuesta = await agenda.iniciarAgenda(sender, pool);
+                break;
+              case '2':
+                respuesta = "📖 Aquí están tus citas agendadas (pendiente de implementar).";
+                break;
+              case '3':
+                respuesta = "💡 Puedes consultar nuestros servicios odontológicos. ¿Qué deseas saber?";
+                break;
+            }
+          }
         }
       }
 
