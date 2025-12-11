@@ -36,6 +36,100 @@ function horariosAtencionMensaje() {
   );
 }
 
+/* ---------------------------------------------------------
+   NUEVO: Generar horarios válidos del día
+--------------------------------------------------------- */
+function generarHorariosDia(fecha) {
+  const diaSemana = fecha.getDay();
+  const horarios = [];
+
+  function pushRange(inicio, fin) {
+    for (let min = inicio; min <= fin; min += 30) {
+      const hh = String(Math.floor(min / 60)).padStart(2, '0');
+      const mm = String(min % 60).padStart(2, '0');
+      horarios.push(`${hh}:${mm}`);
+    }
+  }
+
+  if (diaSemana >= 1 && diaSemana <= 5) {
+    pushRange(9 * 60, 11 * 60 + 30);
+    pushRange(14 * 60 + 30, 19 * 60);
+  } else if (diaSemana === 6) {
+    pushRange(9 * 60, 11 * 60 + 30);
+  }
+
+  return horarios;
+}
+
+/* ---------------------------------------------------------
+   NUEVO: Sugerir horarios cercanos o siguiente día
+--------------------------------------------------------- */
+async function sugerirHorarios(pool, fecha, fechaStr, horaStr) {
+  const horariosDia = generarHorariosDia(fecha);
+  const idx = horariosDia.indexOf(horaStr);
+
+  let sugerencias = [];
+
+  if (idx !== -1) {
+    const posibles = [
+      horariosDia[idx - 2],
+      horariosDia[idx - 1],
+      horariosDia[idx + 1],
+      horariosDia[idx + 2]
+    ].filter(Boolean);
+
+    for (let h of posibles) {
+      const result = await pool.query(
+        'SELECT 1 FROM appointments WHERE date = $1 AND time = $2 LIMIT 1',
+        [fechaStr, h]
+      );
+      if (result.rowCount === 0) sugerencias.push(h);
+    }
+  }
+
+  if (sugerencias.length > 0) {
+    return {
+      tipo: "mismo_dia",
+      fechaStr,
+      fechaLabel: formatFechaDia(fecha),
+      horarios: sugerencias
+    };
+  }
+
+  // Buscar siguiente día hábil
+  let siguiente = new Date(fecha);
+  do {
+    siguiente.setDate(siguiente.getDate() + 1);
+  } while (siguiente.getDay() === 0);
+
+  const fechaSugStr =
+    `${String(siguiente.getDate()).padStart(2, '0')}/` +
+    `${String(siguiente.getMonth() + 1).padStart(2, '0')}/` +
+    `${siguiente.getFullYear()}`;
+
+  const horariosSiguiente = generarHorariosDia(siguiente);
+  const horariosDisponibles = [];
+
+  for (let h of horariosSiguiente) {
+    const result = await pool.query(
+      'SELECT 1 FROM appointments WHERE date = $1 AND time = $2 LIMIT 1',
+      [fechaSugStr, h]
+    );
+    if (result.rowCount === 0) horariosDisponibles.push(h);
+    if (horariosDisponibles.length >= 4) break;
+  }
+
+  return {
+    tipo: "otro_dia",
+    fechaStr: fechaSugStr,
+    fechaLabel: formatFechaDia(siguiente),
+    horarios: horariosDisponibles
+  };
+}
+
+/* ---------------------------------------------------------
+   FLUJO PRINCIPAL
+--------------------------------------------------------- */
 module.exports = {
   iniciarAgenda: async () => {
     return "📝 ¡Empecemos a agendar tu cita!\n\n" +
@@ -139,10 +233,26 @@ module.exports = {
       );
 
       if (ocupado.rowCount > 0) {
+
+        const sugerencias = await sugerirHorarios(pool, fecha, contexto.fechaStr, horaStr);
+
+        if (sugerencias.horarios.length > 0) {
+          const lista = sugerencias.horarios.map(h => `• ${h}`).join("\n");
+
+          return {
+            siguiente: 'hora',
+            respuesta:
+              `⚠️ Ese horario ya está ocupado.\n\n` +
+              `👉 Opciones disponibles para *${sugerencias.fechaLabel}*:\n${lista}\n\n` +
+              "Por favor elige una de estas opciones."
+          };
+        }
+
         return {
           siguiente: 'hora',
           respuesta:
-            "⚠️ Ese horario ya está ocupado.\nPor favor elige otro dentro de los horarios permitidos."
+            "⚠️ Ese horario ya está ocupado y no hay alternativas cercanas.\n\n" +
+            horariosAtencionMensaje()
         };
       }
 
