@@ -24,6 +24,10 @@ const pool = new Pool({
   }
 });
 
+// Contexto de agenda en memoria
+const agendaContext = {}; 
+// Estructura: { sender: { paso: 'nombre'|'motivo'|'fecha_hora', nombre:'', motivo:'' } }
+
 // Health check para Railway
 app.get('/', (req, res) => {
   res.send('Ok');
@@ -44,8 +48,7 @@ app.get('/db-test', async (req, res) => {
 app.post('/send-message', async (req, res) => {
   const { to, text } = req.body;
   try {
-    // Esperar 5 segundos antes de enviar
-    await sleep(5000);
+    await sleep(5000); // respetar límite
     const response = await axios.post(
       `${process.env.WASENDER_API_URL}/send-message`,
       { to, text },
@@ -68,7 +71,6 @@ app.post('/webhook', async (req, res) => {
   console.log('Headers recibidos:', req.headers);
   console.log('Body recibido:', req.body);
 
-  // 🔐 Validación de firma con el header correcto
   const signature = req.headers['x-webhook-signature'];
   if (signature !== process.env.WASENDER_WEBHOOK_SECRET) {
     console.error('❌ Firma inválida');
@@ -77,69 +79,71 @@ app.post('/webhook', async (req, res) => {
 
   let sender, content, pushName;
 
-  // Caso: test webhook
   if (req.body.event === 'webhook.test' && req.body.data?.message) {
     sender = 'WaSenderTest';
     content = req.body.data.message;
-  }
-
-  // Caso: mensaje real recibido
-  else if (req.body.event === 'messages.received' && req.body.data?.messages) {
+  } else if (req.body.event === 'messages.received' && req.body.data?.messages) {
     const msg = req.body.data.messages;
     sender = msg.remoteJid;
     content = msg.messageBody;
-    pushName = msg.pushName || ''; // nombre del emisor
+    pushName = msg.pushName || '';
   }
 
   console.log(`📩 Mensaje recibido de ${sender}: ${content}`);
 
   try {
     if (content && sender) {
-      // Guardar interacción en BD
       await pool.query(
         'INSERT INTO interactions (patient_id, message_in, sender) VALUES ($1, $2, $3)',
         [null, content, sender]
       );
       console.log('💾 Mensaje guardado en BD');
 
-      // Verificar si el número ya existe en la BD
       const check = await pool.query(
         'SELECT COUNT(*) FROM interactions WHERE sender = $1',
         [sender]
       );
-
       const count = parseInt(check.rows[0].count, 10);
 
       let respuesta;
+
       if (count === 1) {
         // Primer contacto → saludo genérico
-        respuesta = 
-        "🦷✨ ¡Hola! Bienvenido(a) al Consultorio Dental Ortodent 💙\n" +
-        "Tu sonrisa es nuestra prioridad 😁✨\n\n" +
-        "Soy Amalgama, tu asistente virtual 🤖💬, y estoy aquí para ayudarte.\n\n" +
-        "👉 ¿Qué deseas hacer hoy?\n\n" +
-        "1️⃣ 📅 Agendar una cita\n" +
-        "2️⃣ 📖 Revisar tus citas agendadas\n" +
-        "3️⃣ ❓💡 Preguntar o consultar sobre nuestros servicios\n\n" +
-        "✨ ¡Tu salud dental está en buenas manos!";
-      
-      } else {
-        // Contacto recurrente → menú con nombre
-        if (content.trim() === "1") {
-          // Activar flujo de agenda
-          respuesta = await agenda.iniciarAgenda(sender);
-        } else {
-          respuesta = `¡Hola! ${pushName} 👋, bienvenido nuevamente. Te saluda Amalgama, tu asistente virtual🤖\n\n`+
+        respuesta =
+          "🦷✨ ¡Hola! Bienvenido(a) al Consultorio Dental Ortodent 💙\n" +
+          "Tu sonrisa es nuestra prioridad 😁✨\n\n" +
+          "Soy Amalgama, tu asistente virtual 🤖💬, y estoy aquí para ayudarte.\n\n" +
           "👉 ¿Qué deseas hacer hoy?\n\n" +
           "1️⃣ 📅 Agendar una cita\n" +
           "2️⃣ 📖 Revisar tus citas agendadas\n" +
           "3️⃣ ❓💡 Preguntar o consultar sobre nuestros servicios\n\n" +
-          "✨ Tu sonrisa es nuestra prioridad 😁";
+          "✨ ¡Tu salud dental está en buenas manos!";
+      } else {
+        // Flujo de agenda paso a paso
+        if (content.trim() === "1") {
+          agendaContext[sender] = { paso: 'nombre', nombre: '', motivo: '' };
+          respuesta = await agenda.iniciarAgenda(sender, pool);
+        } else if (agendaContext[sender]) {
+          const ctx = agendaContext[sender];
+          const paso = ctx.paso;
+          const result = await agenda.procesarPaso(sender, pool, paso, content.trim(), ctx);
+          ctx.paso = result.siguiente;
+          respuesta = result.respuesta;
+          if (ctx.paso === 'completo') {
+            delete agendaContext[sender]; // limpiar contexto
+          }
+        } else {
+          respuesta =
+            `¡Hola! ${pushName} 👋, bienvenido nuevamente. Te saluda Amalgama, tu asistente virtual🤖\n\n` +
+            "👉 ¿Qué deseas hacer hoy?\n\n" +
+            "1️⃣ 📅 Agendar una cita\n" +
+            "2️⃣ 📖 Revisar tus citas agendadas\n" +
+            "3️⃣ ❓💡 Preguntar o consultar sobre nuestros servicios\n\n" +
+            "✨ Tu sonrisa es nuestra prioridad 😁";
         }
       }
 
-      // Esperar 5 segundos antes de enviar respuesta
-      await sleep(5000);
+      await sleep(5000); // respetar límite
       await axios.post(
         `${process.env.WASENDER_API_URL}/send-message`,
         { to: sender, text: respuesta },
