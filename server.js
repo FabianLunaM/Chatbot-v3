@@ -5,6 +5,8 @@ const cors = require('cors');
 const { Pool } = require('pg');
 const axios = require('axios');
 const agenda = require('./functions/agendar'); // 👈 Lógica de agendar
+const consultar = require('./functions/consultar'); // 👈 Nuevo módulo consultar
+const modificar = require('./functions/modificar'); // 👈 Nuevo módulo modificar
 const { Validators } = require('./functions/validators'); // 👈 Validadores
 console.log("Agenda cargada:", agenda);
 
@@ -22,8 +24,8 @@ const pool = new Pool({
 });
 
 // Contextos en memoria
-const agendaContext = {}; // { sender: { paso, nombre, motivo } }
-const menuContext = {};   // { sender: true | undefined }  // true => ya mostramos el menú, ahora validamos opciones
+const agendaContext = {}; // { sender: { paso, nombre, motivo, ... } }
+const menuContext = {};   // { sender: true | undefined }
 
 app.get('/', (req, res) => res.send('Ok'));
 
@@ -104,10 +106,9 @@ app.post('/webhook', async (req, res) => {
           "2️⃣ 📖 Revisar tus citas agendadas\n" +
           "3️⃣ ❓💡 Preguntar o consultar sobre nuestros servicios\n\n" +
           "✨ ¡Tu salud dental está en buenas manos!";
-        // Marcamos que ya mostramos menú; el próximo mensaje sí se valida
         menuContext[sender] = true;
       } else {
-        // Si está en flujo de agenda, procesar paso
+        // Flujo de agenda paso a paso
         if (agendaContext[sender]) {
           const ctx = agendaContext[sender];
           const paso = ctx.paso;
@@ -116,11 +117,61 @@ app.post('/webhook', async (req, res) => {
           respuesta = result.respuesta;
           if (ctx.paso === 'completo') {
             delete agendaContext[sender];
-            delete menuContext[sender]; // liberamos el contexto de menú también
+            delete menuContext[sender];
           }
-        } else {
-          // Segundo contacto en adelante:
-          // Si NO hemos mostrado el menú esta sesión, lo mostramos con saludo personalizado.
+        } 
+        // Flujo de gestión de citas (consultar/modificar/cancelar)
+        else if (agendaContext[sender]?.paso === 'gestion_citas') {
+          const ctx = agendaContext[sender];
+          if (content.trim().toLowerCase() === 'modificar') {
+            const listado = await modificar.listarCitasParaModificar(sender, pool);
+            respuesta = listado.respuesta;
+            ctx.paso = 'seleccion_cita';
+            ctx.accion = 'modificar';
+            ctx.citas = listado.citas;
+          } else if (content.trim().toLowerCase() === 'cancelar') {
+            const listado = await modificar.listarCitasParaModificar(sender, pool);
+            respuesta = listado.respuesta;
+            ctx.paso = 'seleccion_cita';
+            ctx.accion = 'cancelar';
+            ctx.citas = listado.citas;
+          } else if (ctx.paso === 'seleccion_cita') {
+            const idx = parseInt(content.trim(), 10) - 1;
+            if (isNaN(idx) || idx < 0 || idx >= ctx.citas.length) {
+              respuesta = "❌ Número inválido. Por favor selecciona una cita de la lista.";
+            } else {
+              const citaId = ctx.citas[idx].id;
+              if (ctx.accion === 'cancelar') {
+                respuesta = await modificar.cancelarCita(pool, citaId);
+                delete agendaContext[sender];
+              } else if (ctx.accion === 'modificar') {
+                respuesta = "🔄 Por favor indícame la nueva fecha (DD/MM/AAAA) para tu cita.";
+                ctx.paso = 'modificar_fecha';
+                ctx.citaId = citaId;
+              }
+            }
+          } else if (ctx.paso === 'modificar_fecha') {
+            const v = Validators.fecha(content.trim());
+            if (!v.ok) {
+              respuesta = `❌ ${v.error}\nEjemplo: 11/12/2025`;
+            } else {
+              ctx.nuevaFecha = content.trim();
+              respuesta = "⏰ Ahora indícame la nueva hora (HH:MM).";
+              ctx.paso = 'modificar_hora';
+            }
+          } else if (ctx.paso === 'modificar_hora') {
+            const v = Validators.hora(content.trim());
+            if (!v.ok) {
+              respuesta = `❌ ${v.error}\nEjemplo: 09:30`;
+            } else {
+              ctx.nuevaHora = content.trim();
+              respuesta = await modificar.modificarCita(pool, ctx.citaId, ctx.nuevaFecha, ctx.nuevaHora);
+              delete agendaContext[sender];
+            }
+          }
+        }
+        // Menú principal
+        else {
           if (!menuContext[sender]) {
             respuesta =
               `¡Hola ${pushName} 👋! Qué gusto saludarte nuevamente.\n\n` +
@@ -129,9 +180,8 @@ app.post('/webhook', async (req, res) => {
               "2️⃣ 📖 Revisar tus citas agendadas\n" +
               "3️⃣ ❓💡 Preguntar o consultar sobre nuestros servicios\n\n" +
               "✨ Tu sonrisa es nuestra prioridad 😁";
-            menuContext[sender] = true; // el siguiente mensaje ya valida opciones
+            menuContext[sender] = true;
           } else {
-            // Ya mostramos el menú: validar opción
             const v = Validators.menuOption(content.trim(), ['1','2','3']);
             if (!v.ok) {
               respuesta = `❌ ${v.error}\n\n👉 Por favor responde con el número de la opción.`;
@@ -142,7 +192,11 @@ app.post('/webhook', async (req, res) => {
                   respuesta = await agenda.iniciarAgenda(sender, pool);
                   break;
                 case '2':
-                  respuesta = "📖 Aquí están tus citas agendadas (pendiente de implementar).";
+                  const consulta = await consultar.consultarCitas(sender, pool);
+                  respuesta = consulta.respuesta;
+                  if (consulta.citas.length > 0) {
+                    agendaContext[sender] = { paso: 'gestion_citas', citas: consulta.citas };
+                  }
                   break;
                 case '3':
                   respuesta = "💡 Puedes consultar nuestros servicios odontológicos. ¿Qué deseas saber?";
