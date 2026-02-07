@@ -196,7 +196,7 @@ app.post('/webhook', async (req, res) => {
                   respuesta = await agenda.iniciarAgenda(sender, pool);
                   break;
                 case '2':
-                  const consulta = await consultar.consultarCitas(sender, pool, content);
+                  const consulta = await consultar.consultarCitas(sender, pool);
                   respuesta = consulta.respuesta;
                   if (consulta.citas.length > 0) {
                     agendaContext[sender] = { paso: 'gestion_citas', citas: consulta.citas };
@@ -213,6 +213,7 @@ app.post('/webhook', async (req, res) => {
         }
       }
 
+      
       await sleep(5000);
       await axios.post(
         `${process.env.WASENDER_API_URL}/send-message`,
