@@ -174,7 +174,6 @@ app.post('/webhook', async (req, res) => {
             }
           }
         }
-
         // Submenú de consultar (cuando no hay citas) 
         else if (agendaContext[sender]?.paso === 'consultar_menu') { 
           const v = Validators.menuOption(content.trim(), ['1','2']); 
@@ -182,7 +181,7 @@ app.post('/webhook', async (req, res) => {
             respuesta = v.error; 
           } else {
              if (v.value === '1') { agendaContext[sender] = { paso: 'nombre', nombre: '', motivo: '' }; 
-             respuesta = "📅 Perfecto, iniciemos el proceso para agendar tu cita."; 
+             respuesta = await agenda.iniciarAgenda(sender, pool); 
             } 
             if (v.value === '2') { 
               respuesta = "👋 Gracias por conversar con Amalgama. ¡Que tengas un excelente día!";
