@@ -3,6 +3,8 @@ const { formatFechaDia } = require('./agendar');
 
 module.exports = {
   consultarCitas: async (sender, pool) => {
+
+    const phone = sender.split ('@')[0];
     const result = await pool.query(
       `SELECT a.id AS appointment_id, a.date, a.time, a.reason, a.status 
        FROM appointments a 
@@ -10,7 +12,7 @@ module.exports = {
        WHERE p.phone = $1 
        AND a.status NOT IN ('cancelada','completada')
        ORDER BY a.date, a.time`,
-      [sender]
+      [phone]
     );
 
     // Filtrar citas futuras (>= hoy)
