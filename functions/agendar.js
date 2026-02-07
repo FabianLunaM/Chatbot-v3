@@ -174,10 +174,33 @@ module.exports = {
     // ------------------------------
     if (paso === 'fecha') {
       const v = Validators.fecha(dato);
+      const FERIADOS = [
+        "01/01/2026", // Año Nuevo 
+        "25/12/2026", // Navidad 
+        "16/02/2026", // Carnaval
+        "17/02/2026" // Carnaval
+        ]
       if (!v.ok)
         return { siguiente: 'fecha', respuesta: `❌ ${v.error}\nEjemplo: 11/12/2025` };
 
       contexto.fecha = v.value;
+
+      // Bloquear domingos 
+      if (contexto.fecha.getDay() === 0) { 
+        return { 
+          siguiente: 'fecha', 
+          respuesta: "❌ No puedes agendar citas en domingo. Por favor elige otra fecha.\nEjemplo: 11/12/2025" 
+        };
+       } 
+
+      // Bloquear feriados 
+      if (FERIADOS.includes(contexto.fechaStr)) {
+        return { 
+          siguiente: 'fecha', 
+          respuesta: "❌ Ese día es feriado y no atendemos. Por favor elige otra fecha." 
+        }; 
+      }
+      
       contexto.fechaStr =
         `${String(contexto.fecha.getDate()).padStart(2, '0')}/` +
         `${String(contexto.fecha.getMonth() + 1).padStart(2, '0')}/` +
