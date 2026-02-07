@@ -3,6 +3,9 @@
 // ------------------------------
 // Utilidades de fecha y hora
 // ------------------------------
+
+
+
 function parseFechaStr(fechaStr) {
   const m = fechaStr.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
   if (!m) return null;
@@ -63,6 +66,19 @@ const Validators = {
     }
     if (!opcionesValidas.includes(v)) {
       return { ok: false, error: `La opción ${v} no es válida. Opciones disponibles: ${opcionesValidas.join(', ')}` };
+    }
+    return { ok: true, value: v };
+  },
+
+  // 👇 Nuevo validador exclusivo para el submenú de consultar
+  consultarOption(value) {
+    const v = String(value).trim();
+    if (!/^\d+$/.test(v)) {
+      return { ok: false, error: 'Por favor ingresa solo el número de la opción.' };
+    }
+    const opcionesValidas = ['1','2'];
+    if (!opcionesValidas.includes(v)) {
+      return { ok: false, error: '❌ Opción inválida. Opciones válidas: 1️⃣ Agendar cita, 2️⃣ Salir del chat' };
     }
     return { ok: true, value: v };
   }
