@@ -118,6 +118,15 @@ app.post('/webhook', async (req, res) => {
           const paso = ctx.paso;
           const result = await agenda.procesarPaso(sender, pool, paso, content.trim(), ctx);
           ctx.paso = result.siguiente;
+
+          // Reiniciar flujo si el usuario eligió volver a fecha 
+          if (ctx.paso === 'fecha') { 
+            // limpiar valores que dependen de la fecha/hora anterior 
+            delete ctx.fecha; 
+            delete ctx.fechaStr; 
+            delete ctx.horaStr; 
+          }
+
           respuesta = result.respuesta;
           if (ctx.paso === 'completo') {
             delete agendaContext[sender];
