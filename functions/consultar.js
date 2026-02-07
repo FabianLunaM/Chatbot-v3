@@ -1,8 +1,9 @@
 // functions/consultar.js
 const { formatFechaDia } = require('./agendar');
+const { Validators } = require('./validators');
 
 module.exports = {
-  consultarCitas: async (sender, pool) => {
+  consultarCitas: async (sender, pool, input = null) => {
     const result = await pool.query(
       `SELECT a.id AS appointment_id, a.date, a.time, a.reason, a.status 
        FROM appointments a 
@@ -26,6 +27,21 @@ module.exports = {
       }
     });
 
+    // Si el usuario ya respondió algo dentro de este flujo
+    if (input) {
+      const v = Validators.consultarOption(input.trim());
+      if (!v.ok) {
+        return { respuesta: v.error, citas: [] };
+      }
+      if (v.value === '1') {
+        return { respuesta: "📅 Perfecto, iniciemos el proceso para agendar tu cita.", citas: [] };
+      }
+      if (v.value === '2') {
+        return { respuesta: "👋 Gracias por conversar con Amalgama. ¡Que tengas un excelente día!", citas: [] };
+      }
+    }
+
+    // Si no hay citas activas
     if (citasFuturas.length === 0) {
       return { 
         respuesta: "📭 No tienes citas activas registradas en nuestro sistema.\n\n" +
@@ -36,6 +52,7 @@ module.exports = {
       };
     }
 
+    // Si hay citas activas
     let respuesta = "📅 Estas son tus citas activas:\n\n";
     citasFuturas.forEach((row, idx) => {
       const [dd, mm, yyyy] = row.date.split('/');
@@ -44,7 +61,7 @@ module.exports = {
     });
 
     respuesta += "👉 ¿Deseas modificar o cancelar alguna cita? Responde con 'modificar' o 'cancelar'.\n\n" +
-                 "Si prefieres:\n" +
+                 "O si prefieres:\n" +
                  "1️⃣ 📅 Agendar una nueva cita\n" +
                  "2️⃣ ❌ Salir del chat";
 
