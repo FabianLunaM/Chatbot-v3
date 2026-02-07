@@ -201,8 +201,10 @@ app.post('/webhook', async (req, res) => {
                   if (consulta.citas.length > 0) {
                     agendaContext[sender] = { paso: 'gestion_citas', citas: consulta.citas };
                   } else { 
+                    agendaContext[sender] = { paso: 'consultar_menu' }; // 👈 nuevo contexto 
+                    }
                     // si no hay citas, no guardamos contexto, pero igual respondemos 
-                    delete agendaContext[sender]; }
+                    //delete agendaContext[sender]; }
                   break;
                 case '3':
                   respuesta = "💡 Puedes consultar nuestros servicios odontológicos. ¿Qué deseas saber?";
@@ -232,6 +234,7 @@ app.post('/webhook', async (req, res) => {
 
   res.send('ok');
 });
+
 
 const PORT = process.env.PORT || 3000;
 const HOST = '0.0.0.0';
