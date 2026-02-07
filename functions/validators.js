@@ -4,7 +4,7 @@
 // Utilidades de fecha y hora
 // ------------------------------
 function parseFechaStr(fechaStr) {
-  const m = fechaStr.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  const m = fechaStr.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
   if (!m) return null;
   const dd = Number(m[1]), mm = Number(m[2]), yyyy = Number(m[3]);
   const fecha = new Date(yyyy, mm - 1, dd);
@@ -13,7 +13,7 @@ function parseFechaStr(fechaStr) {
 }
 
 function parseHoraStr(horaStr) {
-  const m = horaStr.match(/^(\d{2}):(\d{2})$/);
+  const m = horaStr.match(/^(\d{1,2}):(\d{2})$/);
   if (!m) return null;
   const hh = Number(m[1]), mm = Number(m[2]);
   if (hh < 0 || hh > 23 || mm < 0 || mm > 59) return null;
@@ -47,13 +47,29 @@ const Validators = {
   fecha(value) {
     const fecha = parseFechaStr(value.trim());
     if (!fecha) return { ok: false, error: 'La fecha no es válida. Usa el formato DD/MM/AAAA.' };
-    return { ok: true, value: fecha };
+    const hoy = new Date(); 
+    hoy.setHours(0,0,0,0); // normalizar
+    
+    if (fecha < hoy) { 
+      return { ok: false, error: 'No puedes agendar en fechas pasadas.' };
+     }
+     // Normalizar salida siempre en formato DD/MM/AAAA con ceros 
+     const diaStr = String(fecha.getDate()).padStart(2, '0'); 
+     const mesStr = String(fecha.getMonth() + 1).padStart(2, '0'); 
+     const fechaFormateada = `${diaStr}/${mesStr}/${fecha.getFullYear()}`;
+
+    return { ok: true, value: fechaFormateada };
   },
 
   hora(value) {
     const hora = parseHoraStr(value.trim());
     if (!hora) return { ok: false, error: 'La hora no es válida. Usa el formato HH:MM en 24 horas (ej. 09:30).' };
-    return { ok: true, value: value.trim() };
+    
+    const horaStr = String(hora.hh).padStart(2, '0'); 
+    const minStr = String(hora.mm).padStart(2, '0'); 
+    const horaFormateada = `${horaStr}:${minStr}`;
+    
+    return { ok: true, value: horaFormateada };
   },
 
   menuOption(value, opcionesValidas = []) {
