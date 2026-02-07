@@ -112,9 +112,8 @@ app.post('/webhook', async (req, res) => {
           "✨ ¡Tu salud dental está en buenas manos!";
         menuContext[sender] = true;
       } else {
-    
         // Flujo de agenda paso a paso
-        if (agendaContext[sender] && agendaContext[sender].paso !== 'gestion_citas' && agendaContext[sender].paso !== 'conusltar_menu') {
+        if (agendaContext[sender] && agendaContext[sender].paso !== 'gestion_citas' && agendaContext[sender].paso !== 'consultar_menu') {
           const ctx = agendaContext[sender];
           const paso = ctx.paso;
           const result = await agenda.procesarPaso(sender, pool, paso, content.trim(), ctx);
