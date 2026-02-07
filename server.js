@@ -196,7 +196,9 @@ app.post('/webhook', async (req, res) => {
                   respuesta = consulta.respuesta;
                   if (consulta.citas.length > 0) {
                     agendaContext[sender] = { paso: 'gestion_citas', citas: consulta.citas };
-                  }
+                  } else { 
+                    // si no hay citas, no guardamos contexto, pero igual respondemos 
+                    delete agendaContext[sender]; }
                   break;
                 case '3':
                   respuesta = "💡 Puedes consultar nuestros servicios odontológicos. ¿Qué deseas saber?";
