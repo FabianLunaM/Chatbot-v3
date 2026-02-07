@@ -12,8 +12,9 @@ function formatFechaDia(fecha) {
   return `${diaNombre} ${dd}/${mm}/${yyyy}`;
 }
 
+
 function validarHorario(fecha, horaStr) {
-  const m = horaStr.match(/^(\d{2}):(\d{2})$/);
+  const m = horaStr.match(/^(\d{1,2}):(\d{2})$/);
   if (!m) return false;
   const hh = Number(m[1]), mm = Number(m[2]);
   const minutos = hh * 60 + mm;
@@ -289,9 +290,10 @@ module.exports = {
       return {
         siguiente: 'completo',
         respuesta:
-          `🎉 Tu cita fue agendada para *${formatFechaDia(fecha)}* a las *${horaStr}*.\n` +
-          `Motivo: ${contexto.motivo}\n\n` +
-          "Si necesitas reprogramar, solo dime y te ayudo."
+        `🎉 La cita se agendo para el paciente *${contexto.nombre}* ,para la fecha:\n\n
+        *${formatFechaDia(fecha)}* a las *${horaStr}*.\n\n` + 
+        "Recuerda que puedes reprogramar o cancelar la cita hasta con 24 horas de anticipacion." `\n\n `+
+        "Gracias por contactarte con el consultorio dental Ortodent"
       };
     }
 
