@@ -27,33 +27,34 @@ module.exports = {
       }
     });
 
-    // Si el usuario ya respondió algo dentro de este flujo
-    if (input) {
-      const v = Validators.consultarOption(input.trim());
-      if (!v.ok) {
-        return { respuesta: v.error, citas: [] };
-      }
-      if (v.value === '1') {
-        return { respuesta: "📅 Perfecto, iniciemos el proceso para agendar tu cita.", citas: [] };
-      }
-      if (v.value === '2') {
-        return { respuesta: "👋 Gracias por conversar con Amalgama. ¡Que tengas un excelente día!", citas: [] };
-      }
-    }
+    let respuesta;
 
     // Si no hay citas activas
     if (citasFuturas.length === 0) {
-      return { 
-        respuesta: "📭 No tienes citas activas registradas en nuestro sistema.\n\n" +
-                   "👉 Opciones disponibles:\n" +
-                   "1️⃣ 📅 Agendar una cita\n" +
-                   "2️⃣ ❌ Salir del chat", 
-        citas: [] 
-      };
+      respuesta = "📭 No tienes citas activas registradas en nuestro sistema.\n\n" +
+                  "👉 Opciones disponibles:\n" +
+                  "1️⃣ 📅 Agendar una cita\n" +
+                  "2️⃣ ❌ Salir del chat";
+
+      // Procesar input después de mostrar el mensaje
+      if (input) {
+        const v = Validators.consultarOption(input.trim());
+        if (!v.ok) {
+          return { respuesta: v.error, citas: [] };
+        }
+        if (v.value === '1') {
+          return { respuesta: "📅 Perfecto, iniciemos el proceso para agendar tu cita.", citas: [] };
+        }
+        if (v.value === '2') {
+          return { respuesta: "👋 Gracias por conversar con Amalgama. ¡Que tengas un excelente día!", citas: [] };
+        }
+      }
+
+      return { respuesta, citas: [] };
     }
 
     // Si hay citas activas
-    let respuesta = "📅 Estas son tus citas activas:\n\n";
+    respuesta = "📅 Estas son tus citas activas:\n\n";
     citasFuturas.forEach((row, idx) => {
       const [dd, mm, yyyy] = row.date.split('/');
       const fechaObj = new Date(yyyy, mm - 1, dd);
@@ -64,6 +65,20 @@ module.exports = {
                  "O si prefieres:\n" +
                  "1️⃣ 📅 Agendar una nueva cita\n" +
                  "2️⃣ ❌ Salir del chat";
+
+    // Procesar input después de mostrar las citas
+    if (input) {
+      const v = Validators.consultarOption(input.trim());
+      if (!v.ok) {
+        return { respuesta: v.error, citas: citasFuturas };
+      }
+      if (v.value === '1') {
+        return { respuesta: "📅 Perfecto, iniciemos el proceso para agendar tu cita.", citas: citasFuturas };
+      }
+      if (v.value === '2') {
+        return { respuesta: "👋 Gracias por conversar con Amalgama. ¡Que tengas un excelente día!", citas: citasFuturas };
+      }
+    }
 
     return { respuesta, citas: citasFuturas };
   }
