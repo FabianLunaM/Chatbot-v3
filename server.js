@@ -203,6 +203,8 @@ app.post('/webhook', async (req, res) => {
                   } else { 
                     agendaContext[sender] = { paso: 'consultar_menu' }; // 👈 nuevo contexto 
                     }
+                    
+                    
                     // si no hay citas, no guardamos contexto, pero igual respondemos 
                     //delete agendaContext[sender]; }
                   break;
