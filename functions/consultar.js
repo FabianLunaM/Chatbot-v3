@@ -2,6 +2,10 @@
 const { formatFechaDia } = require('./agendar');
 const { Validators } = require('./validators');
 
+
+
+
+
 module.exports = {
   consultarCitas: async (sender, pool, input = null) => {
     const result = await pool.query(
