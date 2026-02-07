@@ -109,7 +109,7 @@ app.post('/webhook', async (req, res) => {
         menuContext[sender] = true;
       } else {
         // Flujo de agenda paso a paso
-        if (agendaContext[sender]) {
+        if (agendaContext[sender] && agendaContext[sender].paso !== 'gestion_citas') {
           const ctx = agendaContext[sender];
           const paso = ctx.paso;
           const result = await agenda.procesarPaso(sender, pool, paso, content.trim(), ctx);
@@ -119,7 +119,7 @@ app.post('/webhook', async (req, res) => {
             delete agendaContext[sender];
             delete menuContext[sender];
           }
-        } 
+        }
         // Flujo de gestión de citas (consultar/modificar/cancelar)
         else if (agendaContext[sender]?.paso === 'gestion_citas') {
           const ctx = agendaContext[sender];
