@@ -95,7 +95,11 @@ app.post('/webhook', async (req, res) => {
 
       let respuesta;
 
-      if (count === 1) {
+      if (content.trim().toLowerCase() === 'salir') {
+      respuesta = "👋 Gracias por conversar con Amalgama. ¡Que tengas un excelente día!";
+      delete agendaContext[sender];
+      delete menuContext[sender];
+      } else if (count === 1) {
         // Primer contacto → saludo inicial
         respuesta =
           "🦷✨ ¡Hola! Bienvenido(a) al Consultorio Dental Ortodent 💙\n" +
