@@ -185,6 +185,11 @@ module.exports = {
 
       contexto.fecha = v.value;
 
+      contexto.fechaStr =
+        `${String(contexto.fecha.getDate()).padStart(2, '0')}/` +
+        `${String(contexto.fecha.getMonth() + 1).padStart(2, '0')}/` +
+        `${contexto.fecha.getFullYear()}`;
+
       // Bloquear domingos 
       if (contexto.fecha.getDay() === 0) { 
         return { 
@@ -200,11 +205,6 @@ module.exports = {
           respuesta: "❌ Ese día es feriado y no atendemos. Por favor elige otra fecha." 
         }; 
       }
-      
-      contexto.fechaStr =
-        `${String(contexto.fecha.getDate()).padStart(2, '0')}/` +
-        `${String(contexto.fecha.getMonth() + 1).padStart(2, '0')}/` +
-        `${contexto.fecha.getFullYear()}`;
 
       return {
         siguiente: 'hora',
@@ -214,6 +214,7 @@ module.exports = {
           horariosAtencionMensaje()
       };
     }
+
 
     // ------------------------------
     // 4. HORA
