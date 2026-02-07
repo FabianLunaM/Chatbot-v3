@@ -196,7 +196,7 @@ app.post('/webhook', async (req, res) => {
                   respuesta = await agenda.iniciarAgenda(sender, pool);
                   break;
                 case '2':
-                  const consulta = await consultar.consultarCitas(sender, pool);
+                  const consulta = await consultar.consultarCitas(sender, pool, content);
                   respuesta = consulta.respuesta;
                   if (consulta.citas.length > 0) {
                     agendaContext[sender] = { paso: 'gestion_citas', citas: consulta.citas };
