@@ -174,6 +174,24 @@ app.post('/webhook', async (req, res) => {
             }
           }
         }
+
+        // Submenú de consultar (cuando no hay citas) 
+        else if (agendaContext[sender]?.paso === 'consultar_menu') { 
+          const v = Validators.menuOption(content.trim(), ['1','2']); 
+          if (!v.ok) { 
+            respuesta = v.error; 
+          } else {
+             if (v.value === '1') { agendaContext[sender] = { paso: 'nombre', nombre: '', motivo: '' }; 
+             respuesta = "📅 Perfecto, iniciemos el proceso para agendar tu cita."; 
+            } 
+            if (v.value === '2') { 
+              respuesta = "👋 Gracias por conversar con Amalgama. ¡Que tengas un excelente día!";
+               delete agendaContext[sender];
+               delete menuContext[sender]; 
+              } 
+            } 
+          }
+
         // Menú principal
         else {
           if (!menuContext[sender]) {
@@ -201,8 +219,8 @@ app.post('/webhook', async (req, res) => {
                   if (consulta.citas.length > 0) {
                     agendaContext[sender] = { paso: 'gestion_citas', citas: consulta.citas };
                   } else { 
-                    // si no hay citas, no guardamos contexto, pero igual respondemos 
-                    delete agendaContext[sender]; }
+                    agendaContext[sender] = { paso: 'consultar_menu', citas: []};
+                  }
                   break;
                 case '3':
                   respuesta = "💡 Puedes consultar nuestros servicios odontológicos. ¿Qué deseas saber?";
