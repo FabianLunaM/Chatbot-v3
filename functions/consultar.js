@@ -4,7 +4,7 @@ const { formatFechaDia } = require('./agendar');
 module.exports = {
   consultarCitas: async (sender, pool) => {
     const result = await pool.query(
-      `SELECT id, date, time, reason, status 
+      `SELECT a.id AS appointment_id, a.date, a.time, a.reason, a.status
        FROM appointments a 
        JOIN patients p ON a.patient_id = p.id 
        WHERE p.phone = $1 
