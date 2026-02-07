@@ -12,7 +12,6 @@ function formatFechaDia(fecha) {
   return `${diaNombre} ${dd}/${mm}/${yyyy}`;
 }
 
-
 function validarHorario(fecha, horaStr) {
   const m = horaStr.match(/^(\d{1,2}):(\d{2})$/);
   if (!m) return false;
@@ -180,12 +179,11 @@ module.exports = {
         "25/12/2026", // Navidad 
         "16/02/2026", // Carnaval
         "17/02/2026" // Carnaval
-        ]
+      ];
       if (!v.ok)
         return { siguiente: 'fecha', respuesta: `❌ ${v.error}\nEjemplo: 11/12/2025` };
 
       contexto.fecha = v.value;
-
       contexto.fechaStr =
         `${String(contexto.fecha.getDate()).padStart(2, '0')}/` +
         `${String(contexto.fecha.getMonth() + 1).padStart(2, '0')}/` +
@@ -197,7 +195,7 @@ module.exports = {
           siguiente: 'fecha', 
           respuesta: "❌ No puedes agendar citas en domingo. Por favor elige otra fecha.\nEjemplo: 11/12/2025" 
         };
-       } 
+      } 
 
       // Bloquear feriados 
       if (FERIADOS.includes(contexto.fechaStr)) {
@@ -216,8 +214,7 @@ module.exports = {
       };
     }
 
-
-    // ------------------------------
+        // ------------------------------
     // 4. HORA
     // ------------------------------
     if (paso === 'hora') {
@@ -237,66 +234,97 @@ module.exports = {
         };
       }
 
-      // Guardar paciente
-      let paciente = await pool.query('SELECT * FROM patients WHERE phone = $1', [sender]);
-      let patientId;
+      // Guardar hora en contexto, pero no registrar aún
+      contexto.horaStr = horaStr; 
+      return { 
+        siguiente: 'confirmacion', 
+        respuesta: `📅 Has seleccionado *${formatFechaDia(fecha)}* a las *${horaStr}*.\n\n` + 
+        "¿Estás seguro de esta fecha y hora?\n\n" + 
+        "1️⃣ Sí, confirmar\n" + 
+        "2️⃣ No, elegir otra fecha"
+      };
+    }
+      
+    // ------------------------------
+    // 5. CONFIRMACIÓN
+    // ------------------------------
+    if (paso === 'confirmacion') {
+      const v = Validators.menuOption(dato, ['1','2']);
+      if (!v.ok)
+        return { siguiente: 'confirmacion', respuesta: `❌ ${v.error}\n\n👉 Responde con 1 o 2.` };
 
-      if (paciente.rowCount === 0) {
-        const nuevo = await pool.query(
-          'INSERT INTO patients (name, phone) VALUES ($1, $2) RETURNING id',
-          [contexto.nombre, sender]
+      if (v.value === '1') {
+        // Guardar paciente
+        let paciente = await pool.query('SELECT * FROM patients WHERE phone = $1', [sender]);
+        let patientId;
+
+        if (paciente.rowCount === 0) {
+          const nuevo = await pool.query(
+            'INSERT INTO patients (name, phone) VALUES ($1, $2) RETURNING id',
+            [contexto.nombre, sender]
+          );
+          patientId = nuevo.rows[0].id;
+        } else {
+          patientId = paciente.rows[0].id;
+        }
+
+        // Verificar disponibilidad
+        const ocupado = await pool.query(
+          'SELECT 1 FROM appointments WHERE date = $1 AND time = $2 LIMIT 1',
+          [contexto.fechaStr, contexto.horaStr]
         );
-        patientId = nuevo.rows[0].id;
-      } else {
-        patientId = paciente.rows[0].id;
-      }
 
-      // Verificar disponibilidad
-      const ocupado = await pool.query(
-        'SELECT 1 FROM appointments WHERE date = $1 AND time = $2 LIMIT 1',
-        [contexto.fechaStr, horaStr]
-      );
+        if (ocupado.rowCount > 0) {
+          const sugerencias = await sugerirHorarios(pool, contexto.fecha, contexto.fechaStr, contexto.horaStr);
 
-      if (ocupado.rowCount > 0) {
+          if (sugerencias.horarios.length > 0) {
+            const lista = sugerencias.horarios.map(h => `• ${h}`).join("\n");
 
-        const sugerencias = await sugerirHorarios(pool, fecha, contexto.fechaStr, horaStr);
-
-        if (sugerencias.horarios.length > 0) {
-          const lista = sugerencias.horarios.map(h => `• ${h}`).join("\n");
+            return {
+              siguiente: 'hora',
+              respuesta:
+                `⚠️ Ese horario ya está ocupado.\n\n` +
+                `👉 Opciones disponibles para *${sugerencias.fechaLabel}*:\n${lista}\n\n` +
+                "Por favor elige una de estas opciones."
+            };
+          }
 
           return {
             siguiente: 'hora',
             respuesta:
-              `⚠️ Ese horario ya está ocupado.\n\n` +
-              `👉 Opciones disponibles para *${sugerencias.fechaLabel}*:\n${lista}\n\n` +
-              "Por favor elige una de estas opciones."
+              "⚠️ Ese horario ya está ocupado y no hay alternativas cercanas.\n\n" +
+              horariosAtencionMensaje()
           };
-        }
+        }     
+
+        // Registrar cita
+        await pool.query(
+          'INSERT INTO appointments (patient_id, date, time, reason, duration, status) VALUES ($1, $2, $3, $4, $5, $6)',
+          [patientId, contexto.fechaStr, contexto.horaStr, contexto.motivo, 30, 'pendiente']
+        );
 
         return {
-          siguiente: 'hora',
+          siguiente: 'completo',
           respuesta:
-            "⚠️ Ese horario ya está ocupado y no hay alternativas cercanas.\n\n" +
-            horariosAtencionMensaje()
+            `🎉 La cita se agendó para el paciente *${contexto.nombre}*, en la fecha:\n\n` +
+            `*${formatFechaDia(contexto.fecha)}* a las *${contexto.horaStr}*.\n\n` +
+            "Recuerda que puedes reprogramar o cancelar la cita hasta con 24 horas de anticipación.\n\n" +
+            "Gracias por contactarte con el Consultorio Dental Ortodent."
         };
       }
 
-      // Registrar cita
-      await pool.query(
-        'INSERT INTO appointments (patient_id, date, time, reason, duration, status) VALUES ($1, $2, $3, $4, $5, $6)',
-        [patientId, contexto.fechaStr, horaStr, contexto.motivo, 30, 'pendiente']
-      );
-
-      return {
-        siguiente: 'completo',
-        respuesta:
-        `🎉 La cita se agendo para el paciente *${contexto.nombre}* ,para la fecha:\n\n
-        *${formatFechaDia(fecha)}* a las *${horaStr}*.\n\n` + 
-        "Recuerda que puedes reprogramar o cancelar la cita hasta con 24 horas de anticipacion." `\n\n `+
-        "Gracias por contactarte con el consultorio dental Ortodent"
-      };
+      if (v.value === '2') {
+        // Volver a pedir fecha
+        return {
+          siguiente: 'fecha',
+          respuesta: "🔄 Entendido. Por favor indícame una nueva fecha (DD/MM/AAAA)."
+        };
+      }
     }
 
+    // ------------------------------
+    // FLUJO NO RECONOCIDO
+    // ------------------------------
     return {
       siguiente: 'completo',
       respuesta: "❌ Flujo no reconocido. Escribe '1' para iniciar de nuevo."
