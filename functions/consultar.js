@@ -29,18 +29,12 @@ module.exports = {
     if (citasFuturas.length === 0) {
       return { 
         respuesta: "📭 No tienes citas activas registradas en nuestro sistema.\n\n" +
-                   "👉 ¿Quieres agendar una nueva cita? Responde con '1' para agendar.\n" +
-                   "❌ Si prefieres, también puedes cerrar la conversación respondiendo con 'salir'.", 
+                   "👉 Opciones disponibles:\n" +
+                   "1️⃣ 📅 Agendar una cita\n" +
+                   "2️⃣ ❌ Salir del chat", 
         citas: [] 
       };
     }
-
-
-
-
-
-
-
 
     let respuesta = "📅 Estas son tus citas activas:\n\n";
     citasFuturas.forEach((row, idx) => {
@@ -49,7 +43,11 @@ module.exports = {
       respuesta += `${idx + 1}. ${formatFechaDia(fechaObj)} a las ${row.time}\n   Motivo: ${row.reason}\n   Estado: ${row.status}\n\n`;
     });
 
-    respuesta += "👉 ¿Deseas modificar o cancelar alguna cita? Responde con 'modificar' o 'cancelar'.";
+    respuesta += "👉 ¿Deseas modificar o cancelar alguna cita? Responde con 'modificar' o 'cancelar'.\n\n" +
+                 "Si prefieres:\n" +
+                 "1️⃣ 📅 Agendar una nueva cita\n" +
+                 "2️⃣ ❌ Salir del chat";
+
     return { respuesta, citas: citasFuturas };
   }
 };
