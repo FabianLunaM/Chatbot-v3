@@ -53,23 +53,15 @@ const Validators = {
     if (fecha < hoy) { 
       return { ok: false, error: 'No puedes agendar en fechas pasadas.' };
      }
-     // Normalizar salida siempre en formato DD/MM/AAAA con ceros 
-     const diaStr = String(fecha.getDate()).padStart(2, '0'); 
-     const mesStr = String(fecha.getMonth() + 1).padStart(2, '0'); 
-     const fechaFormateada = `${diaStr}/${mesStr}/${fecha.getFullYear()}`;
 
-    return { ok: true, value: fechaFormateada };
+    return { ok: true, value: fecha };
   },
 
   hora(value) {
     const hora = parseHoraStr(value.trim());
     if (!hora) return { ok: false, error: 'La hora no es válida. Usa el formato HH:MM en 24 horas (ej. 09:30).' };
     
-    const horaStr = String(hora.hh).padStart(2, '0'); 
-    const minStr = String(hora.mm).padStart(2, '0'); 
-    const horaFormateada = `${horaStr}:${minStr}`;
-    
-    return { ok: true, value: horaFormateada };
+    return { ok: true, value: value.trim() };
   },
 
   menuOption(value, opcionesValidas = []) {
