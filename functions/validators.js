@@ -73,6 +73,15 @@ const Validators = {
       return { ok: false, error: `La opción ${v} no es válida. Opciones disponibles: ${opcionesValidas.join(', ')}` };
     }
     return { ok: true, value: v };
+  },
+
+  telefono(value) { 
+    const v = String(value).trim(); 
+    // acepta entre 7 y 12 dígitos 
+    if (!/^\d{7,12}$/.test(v)) { 
+      return { ok: false, error: 'El número de celular no es válido. Debe contener solo dígitos y tener entre 7 y 12 caracteres.' }; 
+    } 
+    return { ok: true, value: v }; 
   }
 };
 

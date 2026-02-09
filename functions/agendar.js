@@ -139,8 +139,6 @@ module.exports = {
 
   procesarPaso: async (sender, pool, paso, dato, contexto) => {
 
-
-    
     // ------------------------------
     // 1. NOMBRE
     // ------------------------------
