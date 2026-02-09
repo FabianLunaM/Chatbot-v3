@@ -222,7 +222,14 @@ app.post('/webhook', async (req, res) => {
                   respuesta = await agenda.iniciarAgenda(sender, pool);
                   break;
                 case '2':
-                  const consulta = await consultar.consultarCitas(sender, pool);
+                  const paciente = await pool.query('SELECT phone FROM patients WHERE sender = $1 LIMIT 1', [sender]);  
+                  let telefono = null;
+                  
+                  if (paciente.rowCount > 0) { 
+                     telefono = paciente.rows[0].phone; 
+                    }
+                  
+                  const consulta = await consultar.consultarCitas(telefono, pool);
                   respuesta = consulta.respuesta;
                   if (consulta.citas.length > 0) {
                     agendaContext[sender] = { paso: 'gestion_citas', citas: consulta.citas };

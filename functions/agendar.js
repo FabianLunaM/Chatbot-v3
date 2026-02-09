@@ -150,12 +150,27 @@ module.exports = {
       contexto.nombre = v.value;
       return {
         siguiente: 'motivo',
-        respuesta: `✅ Gracias ${contexto.nombre}. Ahora dime el motivo de tu consulta:`
+        respuesta: `✅ Gracias ${contexto.nombre}. Ahora dime tu numero de celular:`
+      };
+    }
+    // ----------------------------
+    // 2. TELÉFONO 
+    // ----------------------------
+
+    if (paso === 'telefono') { 
+      const v = Validators.telefono(dato); 
+      if (!v.ok) 
+        return { siguiente: 'telefono', respuesta: `❌ ${v.error}\nEjemplo: 78835733` }; 
+      
+      contexto.telefono = v.value; 
+      return { 
+        siguiente: 'motivo', 
+        respuesta: "✅ Perfecto. Ahora dime el motivo de tu consulta:" 
       };
     }
 
     // ------------------------------
-    // 2. MOTIVO
+    // 3. MOTIVO
     // ------------------------------
     if (paso === 'motivo') {
       const v = Validators.motivo(dato);
@@ -170,7 +185,7 @@ module.exports = {
     }
 
     // ------------------------------
-    // 3. FECHA
+    // 4. FECHA
     // ------------------------------
     if (paso === 'fecha') {
       const v = Validators.fecha(dato);
@@ -215,7 +230,7 @@ module.exports = {
     }
 
         // ------------------------------
-    // 4. HORA
+    // 5. HORA
     // ------------------------------
     if (paso === 'hora') {
       const v = Validators.hora(dato);
@@ -246,7 +261,7 @@ module.exports = {
     }
       
     // ------------------------------
-    // 5. CONFIRMACIÓN
+    // 6. CONFIRMACIÓN
     // ------------------------------
     if (paso === 'confirmacion') {
       const v = Validators.menuOption(dato, ['1','2']);
@@ -255,13 +270,13 @@ module.exports = {
 
       if (v.value === '1') {
         // Guardar paciente
-        let paciente = await pool.query('SELECT * FROM patients WHERE phone = $1', [sender]);
+        let paciente = await pool.query('SELECT * FROM patients WHERE phone = $1', [contexto.telefono]);
         let patientId;
 
         if (paciente.rowCount === 0) {
           const nuevo = await pool.query(
             'INSERT INTO patients (name, phone) VALUES ($1, $2) RETURNING id',
-            [contexto.nombre, sender]
+            [contexto.nombre, contexto.telefono]
           );
           patientId = nuevo.rows[0].id;
         } else {
@@ -306,7 +321,7 @@ module.exports = {
         return {
           siguiente: 'completo',
           respuesta:
-            `🎉 La cita se agendó para el paciente *${contexto.nombre}*, en la fecha:\n\n` +
+            `🎉 La cita se agendó para el paciente *${contexto.nombre}*, con el numero de celular *${contexto.telefono}*, para la fecha:\n\n` +
             `*${formatFechaDia(contexto.fecha)}* a las *${contexto.horaStr}*.\n\n` +
             "Recuerda que puedes reprogramar o cancelar la cita hasta con 24 horas de anticipación.\n\n" +
             "Gracias por contactarte con el Consultorio Dental Ortodent."
