@@ -245,7 +245,6 @@ app.post('/webhook', async (req, res) => {
           }
         }
       }
-´
 
       await sleep(5000);
       await axios.post(
