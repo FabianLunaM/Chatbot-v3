@@ -139,6 +139,8 @@ module.exports = {
 
   procesarPaso: async (sender, pool, paso, dato, contexto) => {
 
+
+    
     // ------------------------------
     // 1. NOMBRE
     // ------------------------------
@@ -149,7 +151,7 @@ module.exports = {
 
       contexto.nombre = v.value;
       return {
-        siguiente: 'motivo',
+        siguiente: 'telefono',
         respuesta: `✅ Gracias ${contexto.nombre}. Ahora dime tu numero de celular:`
       };
     }
