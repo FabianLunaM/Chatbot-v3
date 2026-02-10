@@ -18,8 +18,7 @@ module.exports = {
     const hoy = new Date();
     const citasFuturas = result.rows.filter(row => {
       try {
-        const [dd, mm, yyyy] = row.date.split('/');
-        const fechaObj = new Date(yyyy, mm - 1, dd);
+        const fechaObj = new Date(row.date); // row.date ya es Date/ISO
         return fechaObj >= hoy;
       } catch (err) {
         console.error("❌ Error parseando fecha:", row.date, err);
@@ -39,8 +38,7 @@ module.exports = {
 
     let respuesta = "📅 Estas son tus citas activas:\n\n";
     citasFuturas.forEach((row, idx) => {
-      const [dd, mm, yyyy] = row.date.split('/');
-      const fechaObj = new Date(yyyy, mm - 1, dd);
+      const fechaObj = new Date(row.date); // convertir fecha desde BD
       respuesta += `${idx + 1}. ${formatFechaDia(fechaObj)} a las ${row.time}\n   Motivo: ${row.reason}\n   Estado: ${row.status}\n\n`;
     });
 
