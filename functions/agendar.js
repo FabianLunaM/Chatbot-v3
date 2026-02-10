@@ -131,6 +131,8 @@ async function sugerirHorarios(pool, fecha, fechaStr, horaStr) {
    FLUJO PRINCIPAL
 --------------------------------------------------------- */
 module.exports = {
+  
+  formatFechaDia,
   iniciarAgenda: async () => {
     return "📝 ¡Empecemos a agendar tu cita!\n\n" +
            horariosAtencionMensaje() +
