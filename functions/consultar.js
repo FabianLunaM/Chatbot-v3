@@ -16,9 +16,13 @@ module.exports = {
 
     // Filtrar citas futuras (>= hoy)
     const hoy = new Date();
+    hoy.setHours(0,0,0,0); // normalizar a inicio de dia
+    
     const citasFuturas = result.rows.filter(row => {
       try {
         const fechaObj = new Date(row.date); // row.date ya es Date/ISO
+        fechaObj.setHours(0,0,0,0);
+
         return fechaObj >= hoy;
       } catch (err) {
         console.error("❌ Error parseando fecha:", row.date, err);
