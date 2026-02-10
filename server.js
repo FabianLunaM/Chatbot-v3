@@ -222,7 +222,7 @@ app.post('/webhook', async (req, res) => {
                   respuesta = await agenda.iniciarAgenda(sender, pool);
                   break;
                 case '2':
-                  const paciente = await pool.query('SELECT phone FROM patients WHERE phone IS NOT NULL LIMIT 1');  
+                  const paciente = await pool.query('SELECT phone FROM patients WHERE sender = $1 LIMIT 1', [sender]);  
                   let telefono = null;
                   
                   if (paciente.rowCount > 0) { 

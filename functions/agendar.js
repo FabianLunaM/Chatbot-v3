@@ -263,6 +263,7 @@ module.exports = {
     // ------------------------------
     // 6. CONFIRMACIÓN
     // ------------------------------
+    
     if (paso === 'confirmacion') {
       const v = Validators.menuOption(dato, ['1','2']);
       if (!v.ok)
@@ -275,8 +276,8 @@ module.exports = {
 
         if (paciente.rowCount === 0) {
           const nuevo = await pool.query(
-            'INSERT INTO patients (name, phone) VALUES ($1, $2) RETURNING id',
-            [contexto.nombre, contexto.telefono]
+            'INSERT INTO patients (name, phone, sender) VALUES ($1, $2, $3) RETURNING id',
+            [contexto.nombre, contexto.telefono, sender]
           );
           patientId = nuevo.rows[0].id;
         } else {
