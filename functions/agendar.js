@@ -339,9 +339,12 @@ module.exports = {
         }     
 
         // Registrar cita
+        const partes = contexto.fechaStr.split('/'); 
+        const fechaISO = `${partes[2]}-${partes[1]}-${partes[0]}`; // YYYY-MM-DD
+        
         await pool.query(
           'INSERT INTO appointments (patient_id, date, time, reason, duration, status) VALUES ($1, $2, $3, $4, $5, $6)',
-          [patientId, contexto.fechaStr, contexto.horaStr, contexto.motivo, 30, 'pendiente']
+          [patientId, fechaISO, contexto.horaStr, contexto.motivo, 30, 'pendiente']
         );
 
         return {
