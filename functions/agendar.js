@@ -81,7 +81,7 @@ async function sugerirHorarios(pool, fecha, fechaStr, horaStr) {
     for (let h of posibles) {
       const result = await pool.query(
         'SELECT 1 FROM appointments WHERE date = $1 AND time = $2 LIMIT 1',
-        [fechaStr, h]
+        [fecha, h]
       );
       if (result.rowCount === 0) sugerencias.push(h);
     }
@@ -95,6 +95,7 @@ async function sugerirHorarios(pool, fecha, fechaStr, horaStr) {
       horarios: sugerencias
     };
   }
+
 
   // Buscar siguiente día hábil
   let siguiente = new Date(fecha);
@@ -113,7 +114,7 @@ async function sugerirHorarios(pool, fecha, fechaStr, horaStr) {
   for (let h of horariosSiguiente) {
     const result = await pool.query(
       'SELECT 1 FROM appointments WHERE date = $1 AND time = $2 LIMIT 1',
-      [fechaSugStr, h]
+      [siguiente, h]
     );
     if (result.rowCount === 0) horariosDisponibles.push(h);
     if (horariosDisponibles.length >= 4) break;
@@ -312,7 +313,7 @@ module.exports = {
         // Verificar disponibilidad
         const ocupado = await pool.query(
           'SELECT 1 FROM appointments WHERE date = $1 AND time = $2 LIMIT 1',
-          [contexto.fechaStr, contexto.horaStr]
+          [contexto.fecha, contexto.horaStr]
         );
 
         if (ocupado.rowCount > 0) {
@@ -339,12 +340,12 @@ module.exports = {
         }     
 
         // Registrar cita
-        const partes = contexto.fechaStr.split('/'); 
-        const fechaISO = `${partes[2]}-${partes[1]}-${partes[0]}`; // YYYY-MM-DD
+        //const partes = contexto.fechaStr.split('/'); 
+        //const fechaISO = `${partes[2]}-${partes[1]}-${partes[0]}`; // YYYY-MM-DD
         
         await pool.query(
           'INSERT INTO appointments (patient_id, date, time, reason, duration, status) VALUES ($1, $2, $3, $4, $5, $6)',
-          [patientId, fechaISO, contexto.horaStr, contexto.motivo, 30, 'pendiente']
+          [patientId, contexto.fecha, contexto.horaStr, contexto.motivo, 30, 'pendiente']
         );
 
         return {
@@ -365,6 +366,7 @@ module.exports = {
         };
       }
     }
+
 
     // ------------------------------
     // FLUJO NO RECONOCIDO
