@@ -222,6 +222,15 @@ module.exports = {
         }; 
       }
 
+      // Restricción: máximo 2 semanas 
+      const hoy = new Date(); 
+      hoy.setHours(0,0,0,0); 
+      const limite = new Date(hoy); 
+      limite.setDate(limite.getDate() + 14); 
+      if (contexto.fecha > limite) { 
+        return { siguiente: 'fecha', respuesta: "❌ Solo puedes agendar citas hasta 2 semanas desde hoy. Por favor elige una fecha más cercana." }; 
+      }
+
       return {
         siguiente: 'hora',
         respuesta:
@@ -285,6 +294,20 @@ module.exports = {
         } else {
           patientId = paciente.rows[0].id;
         }
+
+        // Restricción: máximo 3 citas activas 
+        const citasActivas = await pool.query( 
+          'SELECT COUNT(*) FROM appointments WHERE patient_id = $1 AND status = $2', 
+          [patientId, 'pendiente'] 
+        ); 
+        
+        if (parseInt(citasActivas.rows[0].count, 10) >= 3) { 
+          return { 
+            siguiente: 'completo', 
+            respuesta: "❌ Ya tienes 3 citas activas registradas. No puedes agendar más hasta que alguna se complete o se cancele." 
+          }; 
+        }
+
 
         // Verificar disponibilidad
         const ocupado = await pool.query(
