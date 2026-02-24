@@ -191,7 +191,13 @@ app.post('/webhook', async (req, res) => {
           } else {
              if (v.value === '1') { agendaContext[sender] = { paso: 'nombre', nombre: '', motivo: '' }; 
              respuesta = await agenda.iniciarAgenda(sender, pool); 
-            } 
+
+             // fallback para evitar respuesta vacia
+             if (!respuesta || respuesta.trim() === ""){
+                respuesta = "📝 Vamos a agendar tu cita. Por favor dime tu nombre completo:";
+               }
+             } 
+
             if (v.value === '2') { 
               respuesta = "👋 Gracias por conversar con Amalgama. ¡Que tengas un excelente día!";
                delete agendaContext[sender];
