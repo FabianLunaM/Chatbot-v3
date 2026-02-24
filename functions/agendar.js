@@ -283,7 +283,7 @@ module.exports = {
 
       if (v.value === '1') {
         // Guardar paciente
-        let paciente = await pool.query('SELECT * FROM patients WHERE phone = $1', [contexto.telefono]);
+        let paciente = await pool.query('SELECT * FROM patients WHERE phone = $1', [sender]);
         let patientId;
 
         if (paciente.rowCount === 0) {
@@ -308,7 +308,6 @@ module.exports = {
             respuesta: "❌ Ya tienes 3 citas activas registradas. No puedes agendar más hasta que alguna se complete o se cancele." 
           }; 
         }
-
 
         // Verificar disponibilidad
         const ocupado = await pool.query(
