@@ -257,20 +257,6 @@ app.post('/webhook', async (req, res) => {
         } else { 
           console.warn(`⚠️ No se envió mensaje a ${sender} porque la respuesta estaba vacía.`); 
         }
-      
-      //await axios.post(
-       // `${process.env.WASENDER_API_URL}/send-message`,
-       // { to: sender, text: respuesta },
-       // {
-       //   headers: {
-       //     Authorization: `Bearer ${process.env.WASENDER_API_KEY}`,
-        //    'Content-Type': 'application/json'
-        //  }
-        //}
-      //);
-      //console.log(`🤖 Respuesta enviada a ${sender}`);
-
-
     }
   } catch (err) {
     console.error('❌ Error en webhook:', err);
