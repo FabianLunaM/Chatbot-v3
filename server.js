@@ -51,6 +51,19 @@ const pool = new Pool({
 // Contextos en memoria
 const agendaContext = {}; 
 const menuContext = {};   
+const chatTimeouts = {}; // 👈 Nuevo: manejar temporizadores
+
+function iniciarTimeout(sender) {
+  if (chatTimeouts[sender]) {
+    clearTimeout(chatTimeouts[sender]);
+  }
+  chatTimeouts[sender] = setTimeout(async () => {
+    delete agendaContext[sender];
+    delete menuContext[sender];
+    delete chatTimeouts[sender];
+    await enviarMensaje(sender, "⏰ El chat se ha cerrado automáticamente por inactividad. Gracias por conversar con Amalgama.");
+  }, 300000); // 5 minutos
+}
 
 app.get('/', (req, res) => res.send('Ok'));
 
@@ -149,36 +162,28 @@ app.post('/webhook', async (req, res) => {
             delete menuContext[sender];
           }
         }
-        
-          else if (agendaContext[sender]?.paso === 'gestion_citas') {
-            console.log("➡️ Entrando en flujo gestion_citas");
-            const ctx = agendaContext[sender];
-
+               else if (agendaContext[sender]?.paso === 'gestion_citas') {
+          console.log("➡️ Entrando en flujo gestion_citas");
+          const ctx = agendaContext[sender];
           if (content.trim().toLowerCase() === 'modificar') {
             const listado = await modificar.listarCitasParaModificar(sender, pool);
             respuesta = listado.respuesta;
             ctx.paso = 'seleccion_cita';
             ctx.accion = 'modificar';
             ctx.citas = listado.citas;
-
           } else if (content.trim().toLowerCase() === 'cancelar') {
             const listado = await modificar.listarCitasParaModificar(sender, pool);
             respuesta = listado.respuesta;
             ctx.paso = 'seleccion_cita';
             ctx.accion = 'cancelar';
             ctx.citas = listado.citas;
-
           } else if (content.trim() === '1') {
-            // 👇 Nueva opción: agendar cita desde gestion_citas
             agendaContext[sender] = { paso: 'nombre', nombre: '', motivo: '' };
             respuesta = await agenda.iniciarAgenda();
-
           } else if (content.trim() === '2') {
-            // 👇 Nueva opción: salir desde gestion_citas
             respuesta = "👋 Gracias por conversar con Amalgama. ¡Que tengas un excelente día!";
             delete agendaContext[sender];
             delete menuContext[sender];
-
           } else if (ctx.paso === 'seleccion_cita') {
             const idx = parseInt(content.trim(), 10) - 1;
             if (isNaN(idx) || idx < 0 || idx >= ctx.citas.length) {
@@ -194,7 +199,6 @@ app.post('/webhook', async (req, res) => {
                 ctx.citaId = citaId;
               }
             }
-
           } else if (ctx.paso === 'modificar_fecha') {
             const v = Validators.fecha(content.trim());
             if (!v.ok) {
@@ -204,7 +208,6 @@ app.post('/webhook', async (req, res) => {
               respuesta = "⏰ Ahora indícame la nueva hora (HH:MM).";
               ctx.paso = 'modificar_hora';
             }
-
           } else if (ctx.paso === 'modificar_hora') {
             const v = Validators.hora(content.trim());
             if (!v.ok) {
@@ -214,14 +217,12 @@ app.post('/webhook', async (req, res) => {
               respuesta = await modificar.modificarCita(pool, ctx.citaId, ctx.nuevaFecha, ctx.nuevaHora);
               delete agendaContext[sender];
             }
-
           } else {
             // 👇 Fallback específico para gestion_citas
             respuesta = "❌ Opción no válida en gestión de citas. Escribe 'modificar', 'cancelar', '1' para agendar nueva cita o '2' para salir.";
           }
         }
-
-                else if (agendaContext[sender]?.paso === 'consultar_menu') { 
+        else if (agendaContext[sender]?.paso === 'consultar_menu') { 
           console.log("➡️ Entrando en flujo consultar_menu");
           const v = Validators.menuOption(content.trim(), ['1','2']); 
           if (!v.ok) { 
@@ -241,8 +242,6 @@ app.post('/webhook', async (req, res) => {
             } 
           } 
         }
-
-        // Menú principal
         else {
           console.log("➡️ Entrando en menú principal");
           if (!menuContext[sender]) {
@@ -267,7 +266,6 @@ app.post('/webhook', async (req, res) => {
                 case '2':
                   const consulta = await consultar.consultarCitas(sender, pool); 
                   respuesta = consulta.respuesta; 
-                  
                   if (consulta.citas.length > 0) {
                     agendaContext[sender] = { paso: 'gestion_citas', citas: consulta.citas }; 
                   } else { 
@@ -288,6 +286,9 @@ app.post('/webhook', async (req, res) => {
         console.error("⚠️ Flujo sin respuesta, aplicando fallback"); 
         respuesta = "⚠️ Hubo un error en el flujo. Escribe '1' para agendar una cita o '2' para salir."; 
       }
+
+      // Reiniciar temporizador de inactividad
+      iniciarTimeout(sender);
 
       // 👇 Enviar solo una vez
       await enviarMensaje(sender, respuesta);
