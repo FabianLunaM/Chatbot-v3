@@ -272,6 +272,7 @@ module.exports = {
       };
     }
       
+    
     // ------------------------------
     // 6. CONFIRMACIÓN
     // ------------------------------
@@ -283,7 +284,7 @@ module.exports = {
 
       if (v.value === '1') {
         // Guardar paciente
-        let paciente = await pool.query('SELECT * FROM patients WHERE phone = $1', [sender]);
+        let paciente = await pool.query('SELECT * FROM patients WHERE sender = $1', [sender]);
         let patientId;
 
         if (paciente.rowCount === 0) {
