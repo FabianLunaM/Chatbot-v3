@@ -135,6 +135,7 @@ app.post('/webhook', async (req, res) => {
         }
         // Flujo de gestión de citas (consultar/modificar/cancelar)
         else if (agendaContext[sender]?.paso === 'gestion_citas') {
+          console.log("➡️ Entrando en flujo geston_citas");
           const ctx = agendaContext[sender];
           if (content.trim().toLowerCase() === 'modificar') {
             const listado = await modificar.listarCitasParaModificar(sender, pool);
@@ -185,6 +186,7 @@ app.post('/webhook', async (req, res) => {
         }
         // Submenú de consultar (cuando no hay citas) 
         else if (agendaContext[sender]?.paso === 'consultar_menu') { 
+          console.log("➡️ Entrando en flujo consultar_menu");
           const v = Validators.menuOption(content.trim(), ['1','2']); 
           if (!v.ok) { 
             respuesta = v.error; 
@@ -254,6 +256,17 @@ app.post('/webhook', async (req, res) => {
         console.error("⚠️ Flujo sin respuesta, aplicando fallback"); 
         respuesta = "⚠️ Hubo un error en el flujo. Escribe '1' para agendar una cita o '2' para salir."; 
       }
+
+      await axios.post( 
+        `${process.env.WASENDER_API_URL}/send-message`, 
+        { to: sender, text: respuesta }, 
+        { 
+          headers: { Authorization: `Bearer ${process.env.WASENDER_API_KEY}`,
+           'Content-Type': 'application/json' 
+          } 
+        } 
+      ); 
+      console.log(`🤖 Respuesta enviada a ${sender}`);
       
       if (respuesta && respuesta.trim() !== "") { 
         await axios.post( 
@@ -277,7 +290,6 @@ app.post('/webhook', async (req, res) => {
 
   res.send('ok');
 });
-
 
 const PORT = process.env.PORT || 3000;
 const HOST = '0.0.0.0';
