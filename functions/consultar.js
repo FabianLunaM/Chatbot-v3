@@ -8,12 +8,13 @@ module.exports = {
       `SELECT a.id AS appointment_id, a.date, a.time, a.reason, a.status 
        FROM appointments a 
        JOIN patients p ON a.patient_id = p.id 
-       WHERE p.phone = $1 
+       WHERE p.sender = $1 
        AND a.status NOT IN ('cancelada','completada')
        ORDER BY a.date, a.time`,
       [sender]
     );
 
+    
     // Filtrar citas futuras (>= hoy)
     const hoy = new Date();
     hoy.setHours(0,0,0,0); // normalizar a inicio de dia
