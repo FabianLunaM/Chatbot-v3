@@ -4,10 +4,10 @@ const express = require('express');
 const cors = require('cors');
 const { Pool } = require('pg');
 const axios = require('axios');
-const agenda = require('./functions/agendar'); // 👈 Lógica de agendar
-const consultar = require('./functions/consultar'); // 👈 Nuevo módulo consultar
-const modificar = require('./functions/modificar'); // 👈 Nuevo módulo modificar
-const { Validators } = require('./functions/validators'); // 👈 Validadores
+const agenda = require('./functions/agendar'); 
+const consultar = require('./functions/consultar'); 
+const modificar = require('./functions/modificar'); 
+const { Validators } = require('./functions/validators'); 
 console.log("Agenda cargada:", agenda);
 
 const app = express();
@@ -18,14 +18,39 @@ function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+// 👇 Nueva función para enviar mensajes
+async function enviarMensaje(sender, texto) {
+  if (!texto || texto.trim() === "") {
+    console.warn(`⚠️ No se envió mensaje a ${sender} porque la respuesta estaba vacía.`);
+    return;
+  }
+
+  await sleep(5000); // respetar límite de 5s
+  try {
+    await axios.post(
+      `${process.env.WASENDER_API_URL}/send-message`,
+      { to: sender, text: texto },
+      {
+        headers: {
+          Authorization: `Bearer ${process.env.WASENDER_API_KEY}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+    console.log(`🤖 Respuesta enviada a ${sender}`);
+  } catch (err) {
+    console.error("❌ Error enviando mensaje:", err.response?.data || err.message);
+  }
+}
+
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false }
 });
 
 // Contextos en memoria
-const agendaContext = {}; // { sender: { paso, nombre, motivo, ... } }
-const menuContext = {};   // { sender: true | undefined }
+const agendaContext = {}; 
+const menuContext = {};   
 
 app.get('/', (req, res) => res.send('Ok'));
 
@@ -42,13 +67,8 @@ app.get('/db-test', async (req, res) => {
 app.post('/send-message', async (req, res) => {
   const { to, text } = req.body;
   try {
-    await sleep(5000);
-    const response = await axios.post(
-      `${process.env.WASENDER_API_URL}/send-message`,
-      { to, text },
-      { headers: { Authorization: `Bearer ${process.env.WASENDER_API_KEY}`, 'Content-Type': 'application/json' } }
-    );
-    res.json(response.data);
+    await enviarMensaje(to, text);
+    res.json({ status: "ok" });
   } catch (err) {
     console.error('❌ Error enviando mensaje:', err.response?.data || err.message);
     res.status(500).send('Error enviando mensaje');
@@ -96,11 +116,10 @@ app.post('/webhook', async (req, res) => {
       let respuesta;
 
       if (content.trim().toLowerCase() === 'salir') {
-      respuesta = "👋 Gracias por conversar con Amalgama. ¡Que tengas un excelente día!";
-      delete agendaContext[sender];
-      delete menuContext[sender];
+        respuesta = "👋 Gracias por conversar con Amalgama. ¡Que tengas un excelente día!";
+        delete agendaContext[sender];
+        delete menuContext[sender];
       } else if (count === 1) {
-        // Primer contacto → saludo inicial
         respuesta =
           "🦷✨ ¡Hola! Bienvenido(a) al Consultorio Dental Ortodent 💙\n" +
           "Tu sonrisa es nuestra prioridad 😁✨\n\n" +
@@ -112,16 +131,13 @@ app.post('/webhook', async (req, res) => {
           "✨ ¡Tu salud dental está en buenas manos!";
         menuContext[sender] = true;
       } else {
-        // Flujo de agenda paso a paso
         if (agendaContext[sender] && agendaContext[sender].paso !== 'gestion_citas' && agendaContext[sender].paso !== 'consultar_menu') {
           const ctx = agendaContext[sender];
           const paso = ctx.paso;
           const result = await agenda.procesarPaso(sender, pool, paso, content.trim(), ctx);
           ctx.paso = result.siguiente;
 
-          // Reiniciar flujo si el usuario eligió volver a fecha 
           if (ctx.paso === 'fecha') { 
-            // limpiar valores que dependen de la fecha/hora anterior 
             delete ctx.fecha; 
             delete ctx.fechaStr; 
             delete ctx.horaStr; 
@@ -133,9 +149,8 @@ app.post('/webhook', async (req, res) => {
             delete menuContext[sender];
           }
         }
-        // Flujo de gestión de citas (consultar/modificar/cancelar)
         else if (agendaContext[sender]?.paso === 'gestion_citas') {
-          console.log("➡️ Entrando en flujo geston_citas");
+          console.log("➡️ Entrando en flujo gestion_citas");
           const ctx = agendaContext[sender];
           if (content.trim().toLowerCase() === 'modificar') {
             const listado = await modificar.listarCitasParaModificar(sender, pool);
@@ -184,33 +199,30 @@ app.post('/webhook', async (req, res) => {
             }
           }
         }
-        // Submenú de consultar (cuando no hay citas) 
-        else if (agendaContext[sender]?.paso === 'consultar_menu') { 
+                else if (agendaContext[sender]?.paso === 'consultar_menu') { 
           console.log("➡️ Entrando en flujo consultar_menu");
           const v = Validators.menuOption(content.trim(), ['1','2']); 
           if (!v.ok) { 
             respuesta = v.error; 
           } else {
-             if (v.value === '1') { agendaContext[sender] = { paso: 'nombre', nombre: '', motivo: '' }; 
-             respuesta = await agenda.iniciarAgenda(); 
-
-             // fallback para evitar respuesta vacia
-             if (!respuesta || respuesta.trim() === ""){
+            if (v.value === '1') { 
+              agendaContext[sender] = { paso: 'nombre', nombre: '', motivo: '' }; 
+              respuesta = await agenda.iniciarAgenda(); 
+              if (!respuesta || respuesta.trim() === ""){
                 respuesta = "📝 Vamos a agendar tu cita. Por favor dime tu nombre completo:";
-               }
-             } 
-
+              }
+            } 
             if (v.value === '2') { 
               respuesta = "👋 Gracias por conversar con Amalgama. ¡Que tengas un excelente día!";
-               delete agendaContext[sender];
-               delete menuContext[sender]; 
-              } 
+              delete agendaContext[sender];
+              delete menuContext[sender]; 
             } 
-          }
-
+          } 
+        }
 
         // Menú principal
         else {
+          console.log("➡️ Entrando en menú principal");
           if (!menuContext[sender]) {
             respuesta =
               `¡Hola ${pushName} 👋! Qué gusto saludarte nuevamente.\n\n` +
@@ -235,11 +247,11 @@ app.post('/webhook', async (req, res) => {
                   respuesta = consulta.respuesta; 
                   
                   if (consulta.citas.length > 0) {
-                      agendaContext[sender] = { paso: 'gestion_citas', citas: consulta.citas }; 
-                    } else { 
-                      agendaContext[sender] = { paso: 'consultar_menu', citas: []}; 
-                    } 
-                    break;
+                    agendaContext[sender] = { paso: 'gestion_citas', citas: consulta.citas }; 
+                  } else { 
+                    agendaContext[sender] = { paso: 'consultar_menu', citas: []}; 
+                  } 
+                  break;
                 case '3':
                   respuesta = "💡 Puedes consultar nuestros servicios odontológicos. ¿Qué deseas saber?";
                   break;
@@ -249,31 +261,14 @@ app.post('/webhook', async (req, res) => {
         }
       }
 
-      await sleep(5000);
-
       // 👇 Fallback global 
       if (!respuesta || respuesta.trim() === "") { 
         console.error("⚠️ Flujo sin respuesta, aplicando fallback"); 
         respuesta = "⚠️ Hubo un error en el flujo. Escribe '1' para agendar una cita o '2' para salir."; 
       }
 
-      console.log(`🤖 Respuesta enviada a ${sender}`);
-      
-      if (respuesta && respuesta.trim() !== "") { 
-        await axios.post( 
-          `${process.env.WASENDER_API_URL}/send-message`, 
-          { to: sender, text: respuesta }, 
-          { 
-            headers: { 
-              Authorization: `Bearer ${process.env.WASENDER_API_KEY}`, 
-              'Content-Type': 'application/json'
-             } 
-            } 
-          ); 
-          console.log(`🤖 Respuesta enviada a ${sender}`); 
-        } else { 
-          console.warn(`⚠️ No se envió mensaje a ${sender} porque la respuesta estaba vacía.`); 
-        }
+      // 👇 Enviar solo una vez
+      await enviarMensaje(sender, respuesta);
     }
   } catch (err) {
     console.error('❌ Error en webhook:', err);
