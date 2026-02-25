@@ -257,15 +257,6 @@ app.post('/webhook', async (req, res) => {
         respuesta = "⚠️ Hubo un error en el flujo. Escribe '1' para agendar una cita o '2' para salir."; 
       }
 
-      await axios.post( 
-        `${process.env.WASENDER_API_URL}/send-message`, 
-        { to: sender, text: respuesta }, 
-        { 
-          headers: { Authorization: `Bearer ${process.env.WASENDER_API_KEY}`,
-           'Content-Type': 'application/json' 
-          } 
-        } 
-      ); 
       console.log(`🤖 Respuesta enviada a ${sender}`);
       
       if (respuesta && respuesta.trim() !== "") { 
