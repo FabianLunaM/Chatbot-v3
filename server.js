@@ -206,7 +206,6 @@ app.post('/webhook', async (req, res) => {
             } 
           }
 
-          
         // Menú principal
         else {
           if (!menuContext[sender]) {
