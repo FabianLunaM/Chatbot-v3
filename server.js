@@ -197,6 +197,9 @@ app.post('/webhook', async (req, res) => {
               respuesta = await modificar.modificarCita(pool, ctx.citaId, ctx.nuevaFecha, ctx.nuevaHora);
               delete agendaContext[sender];
             }
+          } else {
+            // 👇 fallback específico para gestion_citas
+            respuesta = "❌ Opción no válida en gestión de citas. Escribe 'modificar' o 'cancelar', o 'salir' para terminar.";
           }
         }
                 else if (agendaContext[sender]?.paso === 'consultar_menu') { 
