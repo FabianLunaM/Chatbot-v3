@@ -149,59 +149,78 @@ app.post('/webhook', async (req, res) => {
             delete menuContext[sender];
           }
         }
-        else if (agendaContext[sender]?.paso === 'gestion_citas') {
-          console.log("➡️ Entrando en flujo gestion_citas");
-          const ctx = agendaContext[sender];
-          if (content.trim().toLowerCase() === 'modificar') {
-            const listado = await modificar.listarCitasParaModificar(sender, pool);
-            respuesta = listado.respuesta;
-            ctx.paso = 'seleccion_cita';
-            ctx.accion = 'modificar';
-            ctx.citas = listado.citas;
-          } else if (content.trim().toLowerCase() === 'cancelar') {
-            const listado = await modificar.listarCitasParaModificar(sender, pool);
-            respuesta = listado.respuesta;
-            ctx.paso = 'seleccion_cita';
-            ctx.accion = 'cancelar';
-            ctx.citas = listado.citas;
-          } else if (ctx.paso === 'seleccion_cita') {
-            const idx = parseInt(content.trim(), 10) - 1;
-            if (isNaN(idx) || idx < 0 || idx >= ctx.citas.length) {
-              respuesta = "❌ Número inválido. Por favor selecciona una cita de la lista.";
-            } else {
-              const citaId = ctx.citas[idx].id;
-              if (ctx.accion === 'cancelar') {
-                respuesta = await modificar.cancelarCita(pool, citaId);
-                delete agendaContext[sender];
-              } else if (ctx.accion === 'modificar') {
-                respuesta = "🔄 Por favor indícame la nueva fecha (DD/MM/AAAA) para tu cita.";
-                ctx.paso = 'modificar_fecha';
-                ctx.citaId = citaId;
-              }
-            }
-          } else if (ctx.paso === 'modificar_fecha') {
-            const v = Validators.fecha(content.trim());
-            if (!v.ok) {
-              respuesta = `❌ ${v.error}\nEjemplo: 11/12/2025`;
-            } else {
-              ctx.nuevaFecha = content.trim();
-              respuesta = "⏰ Ahora indícame la nueva hora (HH:MM).";
-              ctx.paso = 'modificar_hora';
-            }
-          } else if (ctx.paso === 'modificar_hora') {
-            const v = Validators.hora(content.trim());
-            if (!v.ok) {
-              respuesta = `❌ ${v.error}\nEjemplo: 09:30`;
-            } else {
-              ctx.nuevaHora = content.trim();
-              respuesta = await modificar.modificarCita(pool, ctx.citaId, ctx.nuevaFecha, ctx.nuevaHora);
-              delete agendaContext[sender];
-            }
-          } else {
-            // 👇 fallback específico para gestion_citas
-            respuesta = "❌ Opción no válida en gestión de citas. Escribe 'modificar' o 'cancelar', o 'salir' para terminar.";
-          }
-        }
+        
+else if (agendaContext[sender]?.paso === 'gestion_citas') {
+  console.log("➡️ Entrando en flujo gestion_citas");
+  const ctx = agendaContext[sender];
+
+  if (content.trim().toLowerCase() === 'modificar') {
+    const listado = await modificar.listarCitasParaModificar(sender, pool);
+    respuesta = listado.respuesta;
+    ctx.paso = 'seleccion_cita';
+    ctx.accion = 'modificar';
+    ctx.citas = listado.citas;
+
+  } else if (content.trim().toLowerCase() === 'cancelar') {
+    const listado = await modificar.listarCitasParaModificar(sender, pool);
+    respuesta = listado.respuesta;
+    ctx.paso = 'seleccion_cita';
+    ctx.accion = 'cancelar';
+    ctx.citas = listado.citas;
+
+  } else if (content.trim() === '1') {
+    // 👇 Nueva opción: agendar cita desde gestion_citas
+    agendaContext[sender] = { paso: 'nombre', nombre: '', motivo: '' };
+    respuesta = await agenda.iniciarAgenda();
+
+  } else if (content.trim() === '2') {
+    // 👇 Nueva opción: salir desde gestion_citas
+    respuesta = "👋 Gracias por conversar con Amalgama. ¡Que tengas un excelente día!";
+    delete agendaContext[sender];
+    delete menuContext[sender];
+
+  } else if (ctx.paso === 'seleccion_cita') {
+    const idx = parseInt(content.trim(), 10) - 1;
+    if (isNaN(idx) || idx < 0 || idx >= ctx.citas.length) {
+      respuesta = "❌ Número inválido. Por favor selecciona una cita de la lista.";
+    } else {
+      const citaId = ctx.citas[idx].id;
+      if (ctx.accion === 'cancelar') {
+        respuesta = await modificar.cancelarCita(pool, citaId);
+        delete agendaContext[sender];
+      } else if (ctx.accion === 'modificar') {
+        respuesta = "🔄 Por favor indícame la nueva fecha (DD/MM/AAAA) para tu cita.";
+        ctx.paso = 'modificar_fecha';
+        ctx.citaId = citaId;
+      }
+    }
+
+  } else if (ctx.paso === 'modificar_fecha') {
+    const v = Validators.fecha(content.trim());
+    if (!v.ok) {
+      respuesta = `❌ ${v.error}\nEjemplo: 11/12/2025`;
+    } else {
+      ctx.nuevaFecha = content.trim();
+      respuesta = "⏰ Ahora indícame la nueva hora (HH:MM).";
+      ctx.paso = 'modificar_hora';
+    }
+
+  } else if (ctx.paso === 'modificar_hora') {
+    const v = Validators.hora(content.trim());
+    if (!v.ok) {
+      respuesta = `❌ ${v.error}\nEjemplo: 09:30`;
+    } else {
+      ctx.nuevaHora = content.trim();
+      respuesta = await modificar.modificarCita(pool, ctx.citaId, ctx.nuevaFecha, ctx.nuevaHora);
+      delete agendaContext[sender];
+    }
+
+  } else {
+    // 👇 Fallback específico para gestion_citas
+    respuesta = "❌ Opción no válida en gestión de citas. Escribe 'modificar', 'cancelar', '1' para agendar nueva cita o '2' para salir.";
+  }
+}
+
                 else if (agendaContext[sender]?.paso === 'consultar_menu') { 
           console.log("➡️ Entrando en flujo consultar_menu");
           const v = Validators.menuOption(content.trim(), ['1','2']); 
