@@ -206,7 +206,7 @@ app.post('/webhook', async (req, res) => {
             } 
           }
 
-          
+
         // Menú principal
         else {
           if (!menuContext[sender]) {
@@ -248,6 +248,12 @@ app.post('/webhook', async (req, res) => {
       }
 
       await sleep(5000);
+
+      // 👇 Fallback global 
+      if (!respuesta || respuesta.trim() === "") { 
+        console.error("⚠️ Flujo sin respuesta, aplicando fallback"); 
+        respuesta = "⚠️ Hubo un error en el flujo. Escribe '1' para agendar una cita o '2' para salir."; 
+      }
       
       if (respuesta && respuesta.trim() !== "") { 
         await axios.post( 
