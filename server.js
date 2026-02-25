@@ -206,6 +206,7 @@ app.post('/webhook', async (req, res) => {
             } 
           }
 
+          
         // Menú principal
         else {
           if (!menuContext[sender]) {
@@ -225,7 +226,7 @@ app.post('/webhook', async (req, res) => {
               switch (v.value) {
                 case '1':
                   agendaContext[sender] = { paso: 'nombre', nombre: '', motivo: '' };
-                  respuesta = await agenda.iniciarAgenda(sender, pool);
+                  respuesta = await agenda.iniciarAgenda();
                   break;
                 case '2':
                   const consulta = await consultar.consultarCitas(sender, pool); 
