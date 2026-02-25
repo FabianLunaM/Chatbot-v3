@@ -190,7 +190,7 @@ app.post('/webhook', async (req, res) => {
             respuesta = v.error; 
           } else {
              if (v.value === '1') { agendaContext[sender] = { paso: 'nombre', nombre: '', motivo: '' }; 
-             respuesta = await agenda.iniciarAgenda(sender, pool); 
+             respuesta = await agenda.iniciarAgenda(); 
 
              // fallback para evitar respuesta vacia
              if (!respuesta || respuesta.trim() === ""){
@@ -206,6 +206,7 @@ app.post('/webhook', async (req, res) => {
             } 
           }
 
+          
         // Menú principal
         else {
           if (!menuContext[sender]) {
