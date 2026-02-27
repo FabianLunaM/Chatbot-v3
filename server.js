@@ -268,7 +268,9 @@ app.post('/webhook', async (req, res) => {
                       [patientId, 'pendiente'] 
                     ); 
                     if (parseInt(citasPendientes.rows[0].count, 10) >= 3) { 
-                      respuesta = "❌ Ya tienes 3 citas pendientes registradas. No puedes agendar más hasta que alguna se complete o se cancele."; 
+                      respuesta = 
+                      "❌ Ya tienes 3 citas pendientes registradas. No puedes agendar más hasta que alguna se complete o se cancele.\n\n"+
+                      "Gracias por cantactarte con el consultorio dental Ortodent. Hasta pronto✨"; 
                       break; 
                     } 
                   } 

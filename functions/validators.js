@@ -27,7 +27,7 @@ const Validators = {
   nombre(value) {
     if (typeof value !== 'string') return { ok: false, error: 'Por favor escribe tu nombre como texto.' };
     const v = value.trim();
-    if (v.length < 3) return { ok: false, error: 'El nombre parece muy corto. Escribe tu nombre completo.' };
+    if (v.length < 8) return { ok: false, error: 'El nombre parece muy corto. Escribe tu nombre completo.' };
     if (!/^[A-Za-zÁÉÍÓÚáéíóúÑñ\s'-]+$/.test(v)) {
       return { ok: false, error: 'El nombre contiene caracteres no permitidos. Usa solo letras, espacios, guiones o apóstrofes.' };
     }
@@ -37,7 +37,7 @@ const Validators = {
   motivo(value) {
     if (typeof value !== 'string') return { ok: false, error: 'Por favor escribe el motivo como texto.' };
     const v = value.trim();
-    if (v.length < 3) return { ok: false, error: 'El motivo parece muy corto. Describe brevemente tu consulta.' };
+    if (v.length < 5) return { ok: false, error: 'El motivo parece muy corto. Describe brevemente tu consulta.' };
     if (!/^[A-Za-zÁÉÍÓÚáéíóúÑñ0-9\s\.,;:!\?\(\)\-]+$/.test(v)) {
       return { ok: false, error: 'El motivo contiene caracteres no permitidos. Usa solo texto y puntuación básica.' };
     }
@@ -77,12 +77,13 @@ const Validators = {
 
   telefono(value) { 
     const v = String(value).trim(); 
-    // acepta entre 7 y 12 dígitos 
-    if (!/^\d{7,12}$/.test(v)) { 
-      return { ok: false, error: 'El número de celular no es válido. Debe contener solo dígitos y tener entre 7 y 12 caracteres.' }; 
+    // acepta 8 digitos 
+    if (!/^\d{8}$/.test(v)) { 
+      return { ok: false, error: 'El número de celular no es válido. Debe contener solo dígitos y tener 8 caracteres.' }; 
     } 
     return { ok: true, value: v }; 
   }
 };
+
 
 module.exports = { Validators, parseFechaStr, parseHoraStr };
