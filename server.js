@@ -260,6 +260,19 @@ app.post('/webhook', async (req, res) => {
             } else {
               switch (v.value) {
                 case '1':
+                  // Validar citas pendientes antes de iniciar agenda 
+                  const paciente = await pool.query('SELECT id FROM patients WHERE sender = $1', [sender]); 
+                  if (paciente.rowCount > 0) { 
+                    const patientId = paciente.rows[0].id; 
+                    const citasPendientes = await pool.query( 'SELECT COUNT(*) FROM appointments WHERE patient_id = $1 AND status = $2', 
+                      [patientId, 'pendiente'] 
+                    ); 
+                    if (parseInt(citasPendientes.rows[0].count, 10) >= 3) { 
+                      respuesta = "❌ Ya tienes 3 citas pendientes registradas. No puedes agendar más hasta que alguna se complete o se cancele."; 
+                      break; 
+                    } 
+                  } 
+                  // Si no tiene 3 pendientes, iniciar flujo normal
                   agendaContext[sender] = { paso: 'nombre', nombre: '', motivo: '' };
                   respuesta = await agenda.iniciarAgenda();
                   break;

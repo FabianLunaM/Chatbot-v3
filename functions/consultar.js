@@ -3,27 +3,33 @@ const { formatFechaDia } = require('./agendar');
 
 module.exports = {
   consultarCitas: async (sender, pool) => {
+    // 1️⃣ Actualizar automáticamente las citas vencidas a 'completada'
+    await pool.query(
+      `UPDATE appointments 
+       SET status = 'completada' 
+       WHERE date < CURRENT_DATE 
+       AND status = 'pendiente'`
+    );
 
+    // 2️⃣ Consultar solo citas activas
     const result = await pool.query(
       `SELECT a.id AS appointment_id, a.date, a.time, a.reason, a.status 
        FROM appointments a 
        JOIN patients p ON a.patient_id = p.id 
        WHERE p.sender = $1 
-       AND a.status NOT IN ('cancelada','completada')
+       AND a.status = 'pendiente'
        ORDER BY a.date, a.time`,
       [sender]
     );
 
-    
-    // Filtrar citas futuras (>= hoy)
+    // 3️⃣ Filtrar citas futuras (>= hoy)
     const hoy = new Date();
-    hoy.setHours(0,0,0,0); // normalizar a inicio de dia
+    hoy.setHours(0,0,0,0); // normalizar a inicio de día
     
-    const citasFuturas = result.rows.filter(row => {
+    const citasActivas = result.rows.filter(row => {
       try {
-        const fechaObj = new Date(row.date); // row.date ya es Date/ISO
+        const fechaObj = new Date(row.date);
         fechaObj.setHours(0,0,0,0);
-
         return fechaObj >= hoy;
       } catch (err) {
         console.error("❌ Error parseando fecha:", row.date, err);
@@ -31,7 +37,8 @@ module.exports = {
       }
     });
 
-    if (citasFuturas.length === 0) {
+    // 4️⃣ Si no hay citas activas
+    if (citasActivas.length === 0) {
       return { 
         respuesta: "📭 No tienes citas activas registradas en nuestro sistema.\n\n" +
                    "👉 Opciones disponibles:\n" +
@@ -41,9 +48,10 @@ module.exports = {
       };
     }
 
+    // 5️⃣ Construir respuesta con citas activas
     let respuesta = "📅 Estas son tus citas activas:\n\n";
-    citasFuturas.forEach((row, idx) => {
-      const fechaObj = new Date(row.date); // convertir fecha desde BD
+    citasActivas.forEach((row, idx) => {
+      const fechaObj = new Date(row.date);
       respuesta += `${idx + 1}. ${formatFechaDia(fechaObj)} a las ${row.time}\n   Motivo: ${row.reason}\n   Estado: ${row.status}\n\n`;
     });
 
@@ -52,6 +60,6 @@ module.exports = {
                  "1️⃣ 📅 Agendar una nueva cita\n" +
                  "2️⃣ ❌ Salir del chat";
 
-    return { respuesta, citas: citasFuturas };
+    return { respuesta, citas: citasActivas };
   }
 };
