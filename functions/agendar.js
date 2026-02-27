@@ -12,21 +12,6 @@ function formatFechaDia(fecha) {
   return `${diaNombre} ${dd}/${mm}/${yyyy}`;
 }
 
-function validarHorario(fecha, horaStr) {
-  const m = horaStr.match(/^(\d{1,2}):(\d{2})$/);
-  if (!m) return false;
-  const hh = Number(m[1]), mm = Number(m[2]);
-  const minutos = hh * 60 + mm;
-  const diaSemana = fecha.getDay();
-
-  const turnoManana = (minutos >= 9 * 60 && minutos <= 11 * 60 + 30);
-  const turnoTarde = (minutos >= 14 * 60 + 30 && minutos <= 19 * 60);
-
-  if (diaSemana >= 1 && diaSemana <= 5) return turnoManana || turnoTarde;
-  if (diaSemana === 6) return turnoManana;
-  return false;
-}
-
 function horariosAtencionMensaje() {
   return (
     "📌 Nuestros horarios de atención:\n\n" +
@@ -37,7 +22,7 @@ function horariosAtencionMensaje() {
 }
 
 /* ---------------------------------------------------------
-   NUEVO: Generar horarios válidos del día
+   Generar horarios válidos del día
 --------------------------------------------------------- */
 function generarHorariosDia(fecha) {
   const diaSemana = fecha.getDay();
@@ -59,73 +44,6 @@ function generarHorariosDia(fecha) {
   }
 
   return horarios;
-}
-
-/* ---------------------------------------------------------
-   NUEVO: Sugerir horarios cercanos o siguiente día
---------------------------------------------------------- */
-async function sugerirHorarios(pool, fecha, fechaStr, horaStr) {
-  const horariosDia = generarHorariosDia(fecha);
-  const idx = horariosDia.indexOf(horaStr);
-
-  let sugerencias = [];
-
-  if (idx !== -1) {
-    const posibles = [
-      horariosDia[idx - 2],
-      horariosDia[idx - 1],
-      horariosDia[idx + 1],
-      horariosDia[idx + 2]
-    ].filter(Boolean);
-
-    for (let h of posibles) {
-      const result = await pool.query(
-        'SELECT 1 FROM appointments WHERE date = $1 AND time = $2 LIMIT 1',
-        [fecha, h]
-      );
-      if (result.rowCount === 0) sugerencias.push(h);
-    }
-  }
-
-  if (sugerencias.length > 0) {
-    return {
-      tipo: "mismo_dia",
-      fechaStr,
-      fechaLabel: formatFechaDia(fecha),
-      horarios: sugerencias
-    };
-  }
-
-
-  // Buscar siguiente día hábil
-  let siguiente = new Date(fecha);
-  do {
-    siguiente.setDate(siguiente.getDate() + 1);
-  } while (siguiente.getDay() === 0);
-
-  const fechaSugStr =
-    `${String(siguiente.getDate()).padStart(2, '0')}/` +
-    `${String(siguiente.getMonth() + 1).padStart(2, '0')}/` +
-    `${siguiente.getFullYear()}`;
-
-  const horariosSiguiente = generarHorariosDia(siguiente);
-  const horariosDisponibles = [];
-
-  for (let h of horariosSiguiente) {
-    const result = await pool.query(
-      'SELECT 1 FROM appointments WHERE date = $1 AND time = $2 LIMIT 1',
-      [siguiente, h]
-    );
-    if (result.rowCount === 0) horariosDisponibles.push(h);
-    if (horariosDisponibles.length >= 4) break;
-  }
-
-  return {
-    tipo: "otro_dia",
-    fechaStr: fechaSugStr,
-    fechaLabel: formatFechaDia(siguiente),
-    horarios: horariosDisponibles
-  };
 }
 
 /* ---------------------------------------------------------
@@ -156,10 +74,10 @@ module.exports = {
         respuesta: `✅ Gracias ${contexto.nombre}. Ahora dime tu numero de celular:`
       };
     }
+
     // ----------------------------
     // 2. TELÉFONO 
     // ----------------------------
-
     if (paso === 'telefono') { 
       const v = Validators.telefono(dato); 
       if (!v.ok) 
@@ -192,12 +110,7 @@ module.exports = {
     // ------------------------------
     if (paso === 'fecha') {
       const v = Validators.fecha(dato);
-      const FERIADOS = [
-        "01/01/2026", // Año Nuevo 
-        "25/12/2026", // Navidad 
-        "16/02/2026", // Carnaval
-        "17/02/2026" // Carnaval
-      ];
+      const FERIADOS = ["01/01/2026","25/12/2026","16/02/2026","17/02/2026"];
       if (!v.ok)
         return { siguiente: 'fecha', respuesta: `❌ ${v.error}\nEjemplo: 11/12/2025` };
 
@@ -207,23 +120,13 @@ module.exports = {
         `${String(contexto.fecha.getMonth() + 1).padStart(2, '0')}/` +
         `${contexto.fecha.getFullYear()}`;
 
-      // Bloquear domingos 
       if (contexto.fecha.getDay() === 0) { 
-        return { 
-          siguiente: 'fecha', 
-          respuesta: "❌ No puedes agendar citas en domingo. Por favor elige otra fecha.\nEjemplo: 11/12/2025" 
-        };
+        return { siguiente: 'fecha', respuesta: "❌ No puedes agendar citas en domingo. Por favor elige otra fecha." };
       } 
-
-      // Bloquear feriados 
       if (FERIADOS.includes(contexto.fechaStr)) {
-        return { 
-          siguiente: 'fecha', 
-          respuesta: "❌ Ese día es feriado y no atendemos. Por favor elige otra fecha." 
-        }; 
+        return { siguiente: 'fecha', respuesta: "❌ Ese día es feriado y no atendemos. Por favor elige otra fecha." }; 
       }
 
-      // Restricción: máximo 2 semanas 
       const hoy = new Date(); 
       hoy.setHours(0,0,0,0); 
       const limite = new Date(hoy); 
@@ -232,51 +135,59 @@ module.exports = {
         return { siguiente: 'fecha', respuesta: "❌ Solo puedes agendar citas hasta 2 semanas desde hoy. Por favor elige una fecha más cercana." }; 
       }
 
+      // 👉 Generar lista de horarios disponibles
+      const horariosDia = generarHorariosDia(contexto.fecha);
+      const disponibles = [];
+      for (let h of horariosDia) {
+        const result = await pool.query(
+          'SELECT 1 FROM appointments WHERE date = $1 AND time = $2 LIMIT 1',
+          [contexto.fecha, h]
+        );
+        if (result.rowCount === 0) disponibles.push(h);
+      }
+
+      if (disponibles.length === 0) {
+        return { siguiente: 'fecha', respuesta: "❌ No hay horarios disponibles en esa fecha. Por favor elige otra." };
+      }
+
+      contexto.horariosDisponibles = disponibles;
+
+      const lista = disponibles.map((h, idx) => `${idx+1}️⃣ ${h}`).join("\n");
+
       return {
         siguiente: 'hora',
         respuesta:
           `📅 Excelente. La fecha seleccionada es *${formatFechaDia(contexto.fecha)}*.\n\n` +
-          "⏰ Ahora indícame la hora que deseas.\nFormato: HH:MM (24 horas)\nEjemplo: 09:30\n\n" +
-          horariosAtencionMensaje()
+          "⏰ Estos son los horarios disponibles:\n\n" +
+          lista + "\n\n" +
+          "👉 Por favor responde con el número de la opción."
       };
     }
 
-        // ------------------------------
-    // 5. HORA
+    // ------------------------------
+    // 5. HORA (selección por número)
     // ------------------------------
     if (paso === 'hora') {
-      const v = Validators.hora(dato);
-      if (!v.ok)
-        return { siguiente: 'hora', respuesta: `❌ ${v.error}\nEjemplo: 09:30` };
-
-      const horaStr = v.value;
-      const fecha = contexto.fecha;
-
-      if (!validarHorario(fecha, horaStr)) {
-        return {
-          siguiente: 'hora',
-          respuesta:
-            "❌ Ese horario no está dentro de la atención.\n\n" +
-            horariosAtencionMensaje()
-        };
+      const idx = parseInt(dato.trim(), 10) - 1;
+      if (isNaN(idx) || idx < 0 || idx >= contexto.horariosDisponibles.length) {
+        const lista = contexto.horariosDisponibles.map((h, i) => `${i+1}️⃣ ${h}`).join("\n");
+        return { siguiente: 'hora', respuesta: `❌ Número inválido. Selecciona un horario de la lista:\n\n${lista}` };
       }
 
-      // Guardar hora en contexto, pero no registrar aún
-      contexto.horaStr = horaStr; 
+      contexto.horaStr = contexto.horariosDisponibles[idx];
+
       return { 
         siguiente: 'confirmacion', 
-        respuesta: `📅 Has seleccionado *${formatFechaDia(fecha)}* a las *${horaStr}*.\n\n` + 
+        respuesta: `📅 Has seleccionado *${formatFechaDia(contexto.fecha)}* a las *${contexto.horaStr}*.\n\n` + 
         "¿Estás seguro de esta fecha y hora?\n\n" + 
         "1️⃣ Sí, confirmar\n" + 
         "2️⃣ No, elegir otra fecha"
       };
     }
-      
     
     // ------------------------------
     // 6. CONFIRMACIÓN
     // ------------------------------
-    
     if (paso === 'confirmacion') {
       const v = Validators.menuOption(dato, ['1','2']);
       if (!v.ok)
@@ -306,43 +217,24 @@ module.exports = {
         if (parseInt(citasActivas.rows[0].count, 10) >= 3) { 
           return { 
             siguiente: 'completo', 
-            respuesta: "❌ Ya tienes 3 citas activas registradas. No puedes agendar más hasta que alguna se complete o se cancele." 
+            respuesta: "❌ Ya tienes 3 citas activas registradas. No puedes agendar más hasta que alguna se complete o se cancele.\n\n👋 Gracias por conversar con Amalgama. ¡Que tengas un excelente día!"
           }; 
         }
 
-        // Verificar disponibilidad
+        // Verificar disponibilidad (aunque ya se filtró antes, se revalida)
         const ocupado = await pool.query(
           'SELECT 1 FROM appointments WHERE date = $1 AND time = $2 LIMIT 1',
           [contexto.fecha, contexto.horaStr]
         );
 
         if (ocupado.rowCount > 0) {
-          const sugerencias = await sugerirHorarios(pool, contexto.fecha, contexto.fechaStr, contexto.horaStr);
-
-          if (sugerencias.horarios.length > 0) {
-            const lista = sugerencias.horarios.map(h => `• ${h}`).join("\n");
-
-            return {
-              siguiente: 'hora',
-              respuesta:
-                `⚠️ Ese horario ya está ocupado.\n\n` +
-                `👉 Opciones disponibles para *${sugerencias.fechaLabel}*:\n${lista}\n\n` +
-                "Por favor elige una de estas opciones."
-            };
-          }
-
           return {
             siguiente: 'hora',
-            respuesta:
-              "⚠️ Ese horario ya está ocupado y no hay alternativas cercanas.\n\n" +
-              horariosAtencionMensaje()
+            respuesta: "⚠️ Ese horario ya está ocupado. Por favor selecciona otro de la lista disponible."
           };
         }     
 
         // Registrar cita
-        //const partes = contexto.fechaStr.split('/'); 
-        //const fechaISO = `${partes[2]}-${partes[1]}-${partes[0]}`; // YYYY-MM-DD
-        
         await pool.query(
           'INSERT INTO appointments (patient_id, date, time, reason, duration, status) VALUES ($1, $2, $3, $4, $5, $6)',
           [patientId, contexto.fecha, contexto.horaStr, contexto.motivo, 30, 'pendiente']
@@ -351,7 +243,7 @@ module.exports = {
         return {
           siguiente: 'completo',
           respuesta:
-            `🎉 La cita se agendó para el paciente *${contexto.nombre}*, con el numero de celular *${contexto.telefono}*, para la fecha:\n\n` +
+            `🎉 La cita se agendó para el paciente *${contexto.nombre}*, con el número de celular *${contexto.telefono}*, para la fecha:\n\n` +
             `*${formatFechaDia(contexto.fecha)}* a las *${contexto.horaStr}*.\n\n` +
             "Recuerda que puedes reprogramar o cancelar la cita hasta con 24 horas de anticipación.\n\n" +
             "Gracias por contactarte con el Consultorio Dental Ortodent."
@@ -366,7 +258,6 @@ module.exports = {
         };
       }
     }
-
 
     // ------------------------------
     // FLUJO NO RECONOCIDO

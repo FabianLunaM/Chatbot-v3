@@ -271,6 +271,8 @@ app.post('/webhook', async (req, res) => {
                       respuesta = 
                       "❌ Ya tienes 3 citas pendientes registradas. No puedes agendar más hasta que alguna se complete o se cancele.\n\n"+
                       "Gracias por cantactarte con el consultorio dental Ortodent. Hasta pronto✨"; 
+                      delete agendaContext [sender];
+                      delete menuContext [sender];
                       break; 
                     } 
                   } 
