@@ -215,23 +215,16 @@ app.post('/webhook', async (req, res) => {
       else if (agendaContext[sender]?.paso && ['nombre','telefono','motivo','fecha','hora','confirmacion'].includes(agendaContext[sender].paso)) {
         console.log(`➡️ Entrando en flujo agendar: paso ${agendaContext[sender].paso}`);
         const resultado = await agenda.procesarPaso(sender, pool, agendaContext[sender].paso, content.trim(), agendaContext[sender]);
-        
-        // Siempre asigna respuesta desde el resultado
-        respuesta = resultado.respuesta || "⚠️ Error: no se generó respuesta en agendar.";
-        agendaContext[sender].paso = resultado.siguiente;
 
-        if (resultado.siguiente === 'completo') {
+        respuesta = resultado?.respuesta || "⚠️ Error: no se generó respuesta en agendar.";
+        agendaContext[sender].paso = resultado?.siguiente;
+
+        if (resultado?.siguiente === 'completo') {
           delete agendaContext[sender];
           delete menuContext[sender];
-          // 👇 Solo añade cierre si quieres, pero asegúrate de que respuesta ya existe
-          if (respuesta) {
-            respuesta += "\n\n👋 Gracias por conversar con Amalgama. ¡Que tengas un excelente día!";
-          } else { 
-            respuesta = "👋 Gracias por conversar con Amalgama. ¡Que tengas un excelente día!"; 
-          }
+          // ❌ No concatenes nada aquí, la respuesta ya está lista desde agendar.js
         }
       }
-
 
         // --- Menú principal ---
         else {
