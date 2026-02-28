@@ -47,17 +47,23 @@ const Validators = {
   fecha(value) {
     const fecha = parseFechaStr(value.trim());
     if (!fecha) return { ok: false, error: 'La fecha no es válida. Usa el formato DD/MM/AAAA.' };
+
     const hoy = new Date(); 
     hoy.setHours(0,0,0,0); // normalizar
     fecha.setHours(0,0,0,0); // normalizar también la fecha ingresada
-    
-    if (fecha.getTime() === hoy.getTime()) { 
-      return { ok: false, error: 'No puedes agendar citas el mismo día. Debes elegir una fecha con al menos 1 día de anticipación.' };
-     }
 
-    if (fecha < hoy) { 
+    // Comparar día, mes y año directamente
+    if (
+      fecha.getDate() === hoy.getDate() &&
+      fecha.getMonth() === hoy.getMonth() &&
+      fecha.getFullYear() === hoy.getFullYear()
+    ) {
+      return { ok: false, error: 'No puedes agendar citas el mismo día. Debes elegir una fecha con al menos 1 día de anticipación.' };
+    }
+
+    if (fecha < hoy) {
       return { ok: false, error: 'No puedes agendar en fechas pasadas.' };
-     }
+    }
 
     return { ok: true, value: fecha };
   },
@@ -82,13 +88,11 @@ const Validators = {
 
   telefono(value) { 
     const v = String(value).trim(); 
-    // acepta 8 digitos 
     if (!/^\d{8}$/.test(v)) { 
       return { ok: false, error: 'El número de celular no es válido. Debe contener solo dígitos y tener 8 caracteres.' }; 
     } 
     return { ok: true, value: v }; 
   }
 };
-
 
 module.exports = { Validators, parseFechaStr, parseHoraStr };
