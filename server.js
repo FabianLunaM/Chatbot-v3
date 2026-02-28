@@ -174,6 +174,43 @@ app.post('/webhook', async (req, res) => {
           }
         } 
        
+        // --- Flujo de consultar_menu ---
+        else if (agendaContext[sender]?.paso === 'consultar_menu') {
+        console.log("➡️ Entrando en flujo consultar_menu");
+        const ctx = agendaContext[sender];
+        const v = Validators.menuOption(content.trim(), ['1','2','3','4','5']);
+        if (!v.ok) {
+          respuesta = `❌ ${v.error}\n\n👉 Responde con un número válido.`;
+        } else {
+          switch (v.value) {
+            case '1': // Modificar cita
+              const mod = await modificar.listarCitasParaModificar(sender, pool);
+              respuesta = mod.respuesta;
+              agendaContext[sender] = { paso: 'seleccion_cita', citas: mod.citas, accion: 'modificar' };
+              break;
+            case '2': // Cancelar cita
+              const canc = await cancelar.listarCitasParaCancelar(sender, pool);
+              respuesta = canc.respuesta;
+              agendaContext[sender] = { paso: 'seleccion_cita', citas: canc.citas, accion: 'cancelar' };
+              break;
+            case '3': // Agendar nueva cita
+              agendaContext[sender] = { paso: 'nombre', nombre: '', motivo: '' };
+              respuesta = await agenda.iniciarAgenda();
+              break;
+            case '4': // Regresar al menú principal
+              respuesta = mostrarMenuPrincipal(pushName);
+              menuContext[sender] = true;
+              delete agendaContext[sender];
+              break;
+            case '5': // Finalizar conversación
+              respuesta = "👋 Gracias por conversar con Amalgama. ¡Que tengas un excelente día!";
+              delete agendaContext[sender];
+              delete menuContext[sender];
+              break;
+          }
+        }
+      }
+
         // --- Menú principal ---
         else {
           console.log("➡️ Entrando en menú principal");
