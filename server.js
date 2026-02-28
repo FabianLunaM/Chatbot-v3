@@ -259,11 +259,16 @@ app.post('/webhook', async (req, res) => {
                     ); 
                     
                     if (parseInt(citasActivas.rows[0].count, 10) >= 3) { 
-                      respuesta = "❌ Ya tienes 3 citas activas registradas. No puedes agendar más hasta que alguna se complete o se cancele.\n\n👋 Gracias por conversar con Amalgama. ¡Que tengas un excelente día!"; 
-                      break; // 👈 salir sin iniciar el flujo 
+                      respuesta = "❌ Ya tienes 3 citas activas registradas. No puedes agendar más hasta que alguna se complete o se cancele.\n\n👋 Te Regresamos al menu principal..."; 
+                      
+                      // Enviar segundo mensaje con menú principal 
+                      await enviarMensaje(sender, mostrarMenuPrincipal(pushName)); 
+                      
+                      // No iniciar flujo de agendar
+                      break; 
                     }
                   }
-                  
+
                   agendaContext[sender] = { paso: 'nombre', nombre: '', motivo: '' };
                   respuesta = await agenda.iniciarAgenda();
                   break;
