@@ -259,8 +259,12 @@ app.post('/webhook', async (req, res) => {
                     ); 
                     
                     if (parseInt(citasActivas.rows[0].count, 10) >= 3) { 
-                      respuesta = "❌ Ya tienes 3 citas activas registradas. No puedes agendar más hasta que alguna se complete o se cancele.\n\n👋 Te Regresamos al menu principal..."; 
+                      // Enviar primer mensaje (restricción) 
+                      await enviarMensaje(sender, "❌ Ya tienes 3 citas activas registradas. No puedes agendar más hasta que alguna se complete o se cancele.\n\n👋 Te regresamos al menu principal .... ."); 
                       
+                      // Esperar unos segundos antes de enviar el menú principal 
+                      await new Promise(resolve => setTimeout(resolve, 3000));
+
                       // Enviar segundo mensaje con menú principal 
                       await enviarMensaje(sender, mostrarMenuPrincipal(pushName)); 
                       
