@@ -43,6 +43,7 @@ async function enviarMensaje(sender, texto) {
         }
       }
     );
+    console.log(`🤖 Respuesta enviada a ${sender}`);
   } catch (err) {
     console.error("❌ Error enviando mensaje:", err.response?.data || err.message);
   }
@@ -81,6 +82,8 @@ app.post('/webhook', async (req, res) => {
   let respuesta;
   try {
     if (content && sender) {
+      console.log(`📩 Mensaje recibido de ${sender}: ${content}`);
+
       const check = await pool.query('SELECT COUNT(*) FROM interactions WHERE sender = $1',[sender]);
       const count = parseInt(check.rows[0].count, 10);
 
@@ -88,52 +91,8 @@ app.post('/webhook', async (req, res) => {
         respuesta = mostrarMenuPrincipal(pushName);
         menuContext[sender] = true;
       } else {
-        // --- Flujo de modificar ---
-        if (agendaContext[sender]?.paso === 'modificar_fecha') {
-          const v = modificar.validarNuevaFecha(content.trim());
-          if (v.error) respuesta = v.error;
-          else {
-            agendaContext[sender].nuevaFechaObj = v.fechaObj;
-            const horarios = await modificar.pedirNuevaHora(pool, v.fechaObj);
-            if (horarios.error) respuesta = horarios.error;
-            else {
-              agendaContext[sender].paso = 'modificar_hora';
-              agendaContext[sender].disponibles = horarios.disponibles;
-              respuesta = horarios.mensaje;
-            }
-          }
-        } else if (agendaContext[sender]?.paso === 'modificar_hora') {
-          const opcionesValidas = agendaContext[sender].disponibles.map((_, idx) => String(idx+1));
-          const v = Validators.menuOption(content.trim(), opcionesValidas);
-          if (!v.ok) respuesta = `❌ ${v.error}\n\n👉 Responde con un número válido.`;
-          else {
-            const idx = parseInt(v.value, 10) - 1;
-            agendaContext[sender].nuevaHora = agendaContext[sender].disponibles[idx];
-            respuesta = modificar.pedirConfirmacionModificacion(agendaContext[sender].nuevaFechaObj, agendaContext[sender].nuevaHora);
-            agendaContext[sender].paso = 'confirmacion';
-          }
-        } else if (agendaContext[sender]?.paso === 'confirmacion') {
-          const v = Validators.menuOption(content.trim(), ['1','2']);
-          if (!v.ok) respuesta = `❌ ${v.error}\n\n👉 Responde con 1 (Sí) o 2 (No).`;
-          else {
-            if (v.value === '1') {
-              if (agendaContext[sender].accion === 'cancelar') {
-                respuesta = await cancelar.aplicarCancelacion(pool, agendaContext[sender].citaId);
-              } else if (agendaContext[sender].accion === 'modificar') {
-                respuesta = await modificar.aplicarModificacion(pool, agendaContext[sender].citaId, agendaContext[sender].nuevaFechaObj, agendaContext[sender].nuevaHora);
-              }
-              respuesta += "\n\n👋 Gracias por conversar con Amalgama. ¡Que tengas un excelente día!";
-              delete agendaContext[sender];
-              delete menuContext[sender];
-            } else {
-              respuesta = mostrarMenuPrincipal(pushName);
-              delete agendaContext[sender];
-              menuContext[sender] = true;
-            }
-          }
-        } 
         // --- Flujo de selección de cita ---
-        else if (agendaContext[sender]?.paso === 'seleccion_cita') {
+        if (agendaContext[sender]?.paso === 'seleccion_cita') {
           const ctx = agendaContext[sender];
           const totalOpciones = ctx.citas.length + 2;
           const opcionesValidas = Array.from({length: totalOpciones}, (_, i) => String(i+1));
@@ -160,6 +119,51 @@ app.post('/webhook', async (req, res) => {
               respuesta = "👋 Gracias por conversar con Amalgama. ¡Que tengas un excelente día!";
               delete agendaContext[sender];
               delete menuContext[sender];
+            }
+          }
+        } 
+        // --- Flujo de modificar ---
+        else if (agendaContext[sender]?.paso === 'modificar_fecha') {
+          const v = modificar.validarNuevaFecha(content.trim());
+          if (v.error) respuesta = v.error;
+          else {
+            agendaContext[sender].nuevaFechaObj = v.fechaObj;
+            const horarios = await modificar.pedirNuevaHora(pool, v.fechaObj);
+            if (horarios.error) respuesta = horarios.error;
+            else {
+              agendaContext[sender].paso = 'modificar_hora';
+              agendaContext[sender].disponibles = horarios.disponibles;
+              respuesta = horarios.mensaje;
+            }
+          }
+        } else if (agendaContext[sender]?.paso === 'modificar_hora') {
+          const opcionesValidas = agendaContext[sender].disponibles.map((_, idx) => String(idx+1));
+          const v = Validators.menuOption(content.trim(), opcionesValidas);
+          if (!v.ok) respuesta = `❌ ${v.error}\n\n👉 Responde con un número válido.`;
+          else {
+            const idx = parseInt(v.value, 10) - 1;
+            agendaContext[sender].nuevaHora = agendaContext[sender].disponibles[idx];
+            respuesta = modificar.pedirConfirmacionModificacion(agendaContext[sender].nuevaFechaObj, agendaContext[sender].nuevaHora);
+            agendaContext[sender].paso = 'confirmacion';
+            agendaContext[sender].accion = 'modificar';
+          }
+        } else if (agendaContext[sender]?.paso === 'confirmacion') {
+          const v = Validators.menuOption(content.trim(), ['1','2']);
+          if (!v.ok) respuesta = `❌ ${v.error}\n\n👉 Responde con 1 (Sí) o 2 (No).`;
+          else {
+            if (v.value === '1') {
+              if (agendaContext[sender].accion === 'cancelar') {
+                respuesta = await cancelar.aplicarCancelacion(pool, agendaContext[sender].citaId);
+              } else if (agendaContext[sender].accion === 'modificar') {
+                respuesta = await modificar.aplicarModificacion(pool, agendaContext[sender].citaId, agendaContext[sender].nuevaFechaObj, agendaContext[sender].nuevaHora);
+              }
+              respuesta += "\n\n👋 Gracias por conversar con Amalgama. ¡Que tengas un excelente día!";
+              delete agendaContext[sender];
+              delete menuContext[sender];
+            } else {
+              respuesta = mostrarMenuPrincipal(pushName);
+              delete agendaContext[sender];
+              menuContext[sender] = true;
             }
           }
         } 
@@ -190,9 +194,10 @@ app.post('/webhook', async (req, res) => {
           }
         }
       }
+        if (!respuesta || respuesta.trim() === "") 
+        respuesta = "⚠️ Hubo un error en el flujo. Escribe '1' para agendar una cita o '2' para salir."; 
 
-      if (!respuesta || respuesta.trim() === "") respuesta = "⚠️ Hubo un error en el flujo. Escribe '1' para agendar una cita o '2' para salir."; 
-
+      // Reiniciar temporizador de inactividad
       if (agendaContext[sender] || menuContext[sender]) {
         iniciarTimeout(sender);
       } else if (chatTimeouts[sender]) {
@@ -200,6 +205,7 @@ app.post('/webhook', async (req, res) => {
         delete chatTimeouts[sender];
       }
 
+      // Enviar respuesta al paciente
       await enviarMensaje(sender, respuesta);
     }
   } catch (err) {
@@ -209,8 +215,11 @@ app.post('/webhook', async (req, res) => {
   res.send('ok');
 });
 
+// --- Configuración del servidor ---
 const PORT = process.env.PORT || 3000;
 const HOST = '0.0.0.0';
+
 app.listen(PORT, HOST, () => {
   console.log(`Servidor corriendo en puerto ${PORT}`);
 });
+
