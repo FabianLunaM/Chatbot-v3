@@ -93,6 +93,7 @@ app.post('/webhook', async (req, res) => {
       } else {
         // --- Flujo de selección de cita ---
         if (agendaContext[sender]?.paso === 'seleccion_cita') {
+          console.log("➡️ Entrando en flujo seleccion_cita");
           const ctx = agendaContext[sender];
           const totalOpciones = ctx.citas.length + 2;
           const opcionesValidas = Array.from({length: totalOpciones}, (_, i) => String(i+1));
@@ -107,9 +108,11 @@ app.post('/webhook', async (req, res) => {
                 const cita = ctx.citas[opcion - 1];
                 respuesta = cancelar.pedirConfirmacionCancelacion(new Date(cita.date), cita.time);
                 agendaContext[sender].paso = 'confirmacion';
+                agendaContext[sender].accion = 'cancelar';
               } else if (ctx.accion === 'modificar') {
                 respuesta = modificar.pedirNuevaFecha();
                 agendaContext[sender].paso = 'modificar_fecha';
+                agendaContext[sender].accion = 'modificar';
               }
             } else if (opcion === ctx.citas.length + 1) {
               respuesta = mostrarMenuPrincipal(pushName);
@@ -124,6 +127,7 @@ app.post('/webhook', async (req, res) => {
         } 
         // --- Flujo de modificar ---
         else if (agendaContext[sender]?.paso === 'modificar_fecha') {
+          console.log("➡️ Entrando en flujo modificar_fecha");
           const v = modificar.validarNuevaFecha(content.trim());
           if (v.error) respuesta = v.error;
           else {
@@ -137,6 +141,7 @@ app.post('/webhook', async (req, res) => {
             }
           }
         } else if (agendaContext[sender]?.paso === 'modificar_hora') {
+          console.log("➡️ Entrando en flujo modificar_hora");
           const opcionesValidas = agendaContext[sender].disponibles.map((_, idx) => String(idx+1));
           const v = Validators.menuOption(content.trim(), opcionesValidas);
           if (!v.ok) respuesta = `❌ ${v.error}\n\n👉 Responde con un número válido.`;
@@ -148,6 +153,7 @@ app.post('/webhook', async (req, res) => {
             agendaContext[sender].accion = 'modificar';
           }
         } else if (agendaContext[sender]?.paso === 'confirmacion') {
+          console.log("➡️ Entrando en flujo confirmacion");
           const v = Validators.menuOption(content.trim(), ['1','2']);
           if (!v.ok) respuesta = `❌ ${v.error}\n\n👉 Responde con 1 (Sí) o 2 (No).`;
           else {
@@ -167,26 +173,32 @@ app.post('/webhook', async (req, res) => {
             }
           }
         } 
+       
         // --- Menú principal ---
         else {
+          console.log("➡️ Entrando en menú principal");
           if (!menuContext[sender]) {
             respuesta = mostrarMenuPrincipal(pushName);
             menuContext[sender] = true;
           } else {
             const v = Validators.menuOption(content.trim(), ['1','2','3']);
-            if (!v.ok) respuesta = `❌ ${v.error}\n\n👉 Por favor responde con el número de la opción.`;
-            else {
+            if (!v.ok) {
+              respuesta = `❌ ${v.error}\n\n👉 Por favor responde con el número de la opción.`;
+            } else {
               switch (v.value) {
                 case '1':
+                  console.log("➡️ Usuario eligió agendar cita");
                   agendaContext[sender] = { paso: 'nombre', nombre: '', motivo: '' };
                   respuesta = await agenda.iniciarAgenda();
                   break;
                 case '2':
+                  console.log("➡️ Usuario eligió consultar citas");
                   const consulta = await consultar.consultarCitas(sender, pool); 
                   respuesta = consulta.respuesta; 
                   agendaContext[sender] = { paso: 'consultar_menu', citas: consulta.citas };
                   break;
                 case '3':
+                  console.log("➡️ Usuario eligió consultar servicios");
                   respuesta = "💡 Puedes consultar nuestros servicios odontológicos. ¿Qué deseas saber?";
                   break;
               }
@@ -194,10 +206,12 @@ app.post('/webhook', async (req, res) => {
           }
         }
       }
-        if (!respuesta || respuesta.trim() === "") 
-        respuesta = "⚠️ Hubo un error en el flujo. Escribe '1' para agendar una cita o '2' para salir."; 
 
-      // Reiniciar temporizador de inactividad
+      if (!respuesta || respuesta.trim() === "") {
+        console.error("⚠️ Flujo sin respuesta, aplicando fallback");
+        respuesta = "⚠️ Hubo un error en el flujo. Escribe '1' para agendar una cita o '2' para salir."; 
+      }
+
       if (agendaContext[sender] || menuContext[sender]) {
         iniciarTimeout(sender);
       } else if (chatTimeouts[sender]) {
@@ -205,7 +219,6 @@ app.post('/webhook', async (req, res) => {
         delete chatTimeouts[sender];
       }
 
-      // Enviar respuesta al paciente
       await enviarMensaje(sender, respuesta);
     }
   } catch (err) {
@@ -222,4 +235,3 @@ const HOST = '0.0.0.0';
 app.listen(PORT, HOST, () => {
   console.log(`Servidor corriendo en puerto ${PORT}`);
 });
-
