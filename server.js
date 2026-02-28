@@ -162,8 +162,9 @@ app.post('/webhook', async (req, res) => {
             agendaContext[sender].paso = 'confirmacion';
             agendaContext[sender].accion = 'modificar';
           }
+          
         // --- Flujo de agendar cita ---
-        } else if (agendaContext[sender]?.paso && ['nombre','telefono','motivo','fecha','hora','confirmacion'].includes(agendaContext[sender].paso)) {
+        } else if (agendaContext[sender]?.paso && ['nombre','telefono','motivo','fecha','hora'].includes(agendaContext[sender].paso)) {
           console.log(`➡️ Entrando en flujo agendar: paso ${agendaContext[sender].paso}`);
           const resultado = await agenda.procesarPaso(sender, pool, agendaContext[sender].paso, content.trim(), agendaContext[sender]);
 
