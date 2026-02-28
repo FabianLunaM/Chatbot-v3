@@ -220,6 +220,7 @@ module.exports = {
         }     
 
         // Registrar cita
+        console.log("➡️ Insertando cita:", patientId, contexto.fecha, contexto.horaStr, contexto.motivo);
         await pool.query(
           'INSERT INTO appointments (patient_id, date, time, reason, duration, status) VALUES ($1, $2, $3, $4, $5, $6)',
           [patientId, contexto.fecha, contexto.horaStr, contexto.motivo, 30, 'pendiente']
