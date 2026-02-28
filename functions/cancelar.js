@@ -1,9 +1,9 @@
 // functions/cancelar.js
 const { formatFechaDia } = require('./agendar');
 
-function numeroEmoji(n) { 
-  const emojis = ['1️⃣','2️⃣','3️⃣','4️⃣','5️⃣']; 
-  return emojis[n-1] || `${n}️⃣`; 
+function numeroEmoji(n) {
+  const emojis = ['1️⃣','2️⃣','3️⃣','4️⃣','5️⃣'];
+  return emojis[n-1] || `${n}️⃣`;
 }
 
 module.exports = {
@@ -14,7 +14,7 @@ module.exports = {
        JOIN patients p ON a.patient_id = p.id
        WHERE p.sender = $1 AND a.status = 'pendiente'
        ORDER BY a.date, a.time
-       LIMIT 3`, // máximo 3 citas
+       LIMIT 3`,
       [sender]
     );
 
@@ -25,24 +25,27 @@ module.exports = {
     let respuesta = "❌ Estas son tus citas activas:\n\n";
     result.rows.forEach((row, idx) => {
       const fechaObj = new Date(row.date);
-      respuesta += `${numeroEmoji(idx + 1)} ${formatFechaDia(fechaObj)} a las ${row.time}\n Motivo: ${row.reason}\n\n`;
+      respuesta += `${numeroEmoji(idx + 1)} ${formatFechaDia(fechaObj)} a las ${row.time}\n   Motivo: ${row.reason}\n\n`;
     });
 
-    // Opciones adicionales
     const regresarNum = result.rows.length + 1;
     const salirNum = result.rows.length + 2;
 
-    respuesta += `${regresarNum}️⃣ 🔙 Regresar al menú principal\n`;
-    respuesta += `${salirNum}️⃣ ❌ Finalizar la conversación`;
+    respuesta += `${numeroEmoji(regresarNum)} 🔙 Regresar al menú principal\n`;
+    respuesta += `${numeroEmoji(salirNum)} ❌ Finalizar la conversación`;
 
     return { respuesta, citas: result.rows };
   },
 
-  cancelarCita: async (pool, citaId) => {
+  pedirConfirmacionCancelacion: (fechaObj, horaStr) => {
+    return `⚠️ ¿Confirmas que deseas cancelar la cita del día ${formatFechaDia(fechaObj)} a las ${horaStr}?\n\n1️⃣ Sí, cancelar y finalizar chat\n2️⃣ No, regresar al menú principal`;
+  },
+
+  aplicarCancelacion: async (pool, citaId) => {
     await pool.query(
       'UPDATE appointments SET status = $1 WHERE id = $2',
       ['cancelada', citaId]
     );
-    return "✅ La cita seleccionada ha sido cancelada correctamente.\n\n👋 Has vuelto al menú principal.";
+    return "✅ La cita ha sido cancelada correctamente.";
   }
 };

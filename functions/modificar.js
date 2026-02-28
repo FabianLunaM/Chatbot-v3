@@ -15,7 +15,7 @@ module.exports = {
        JOIN patients p ON a.patient_id = p.id
        WHERE p.sender = $1 AND a.status = 'pendiente'
        ORDER BY a.date, a.time
-       LIMIT 3`, //MAXIMO 3 CITAS
+       LIMIT 3`, // máximo 3 citas
       [sender]
     );
 
@@ -30,12 +30,11 @@ module.exports = {
     });
 
     // Opciones adicionales 
-    
     const regresarNum = result.rows.length + 1; 
     const salirNum = result.rows.length + 2; 
     
-    respuesta += `${regresarNum}️⃣ 🔙 Regresar al menú principal\n`; 
-    respuesta += `${salirNum}️⃣ ❌ Finalizar la conversación`;
+    respuesta += `${numeroEmoji(regresarNum)} 🔙 Regresar al menú principal\n`; 
+    respuesta += `${numeroEmoji(salirNum)} 🚪 Finalizar la conversación`;
 
     return { respuesta, citas: result.rows };
   },
@@ -45,7 +44,7 @@ module.exports = {
   },
 
   validarNuevaFecha: (dato) => {
-    const v = Validators.fecha(dato); // ✅ aplica todas las restricciones unificadas
+    const v = Validators.fecha(dato); 
     if (!v.ok) {
       return { error: `❌ ${v.error}\nEjemplo: 11/12/2026` };
     }
@@ -67,19 +66,22 @@ module.exports = {
       return { error: "❌ No hay horarios disponibles en esa fecha. Por favor elige otra." };
     }
 
-    const lista = disponibles.map((h, idx) => `${idx+1}️⃣ ${h}`).join("\n");
+    const lista = disponibles.map((h, idx) => `${numeroEmoji(idx+1)} ${h}`).join("\n");
     return {
       disponibles,
       mensaje: `⏰ Estos son los horarios disponibles para *${formatFechaDia(fechaObj)}*:\n\n${lista}\n\n👉 Responde con el número de la opción.`
     };
   },
 
-  modificarCita: async (pool, citaId, nuevaFechaObj, nuevaHoraStr) => {
+  pedirConfirmacionModificacion: (fechaObj, horaStr) => {
+    return `⚠️ ¿Confirmas que deseas reprogramar la cita para el día ${formatFechaDia(fechaObj)} a las ${horaStr}?\n\n1️⃣ Sí, modificar y finalizar chat\n2️⃣ No, regresar al menú principal`;
+  },
+
+  aplicarModificacion: async (pool, citaId, nuevaFechaObj, nuevaHoraStr) => {
     await pool.query(
       'UPDATE appointments SET date = $1, time = $2 WHERE id = $3',
       [nuevaFechaObj, nuevaHoraStr, citaId]
     );
-
     return `✅ La cita ha sido reprogramada para el día ${formatFechaDia(nuevaFechaObj)} a las ${nuevaHoraStr}.`;
   }
 };
