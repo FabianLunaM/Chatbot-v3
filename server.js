@@ -248,6 +248,22 @@ app.post('/webhook', async (req, res) => {
               switch (v.value) {
                 case '1':
                   console.log("➡️ Usuario eligió agendar cita");
+                  
+                  // 👉 Verificar si el paciente ya tiene 3 citas pendientes 
+                  const paciente = await pool.query('SELECT * FROM patients WHERE sender = $1', [sender]); 
+                  if (paciente.rowCount > 0) { 
+                    const patientId = paciente.rows[0].id; 
+                    const citasActivas = await pool.query( 
+                      'SELECT COUNT(*) FROM appointments WHERE patient_id = $1 AND status = $2', 
+                      [patientId, 'pendiente'] 
+                    ); 
+                    
+                    if (parseInt(citasActivas.rows[0].count, 10) >= 3) { 
+                      respuesta = "❌ Ya tienes 3 citas activas registradas. No puedes agendar más hasta que alguna se complete o se cancele.\n\n👋 Gracias por conversar con Amalgama. ¡Que tengas un excelente día!"; 
+                      break; // 👈 salir sin iniciar el flujo 
+                    }
+                  }
+                  
                   agendaContext[sender] = { paso: 'nombre', nombre: '', motivo: '' };
                   respuesta = await agenda.iniciarAgenda();
                   break;
