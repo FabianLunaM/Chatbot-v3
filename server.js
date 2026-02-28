@@ -152,6 +152,20 @@ app.post('/webhook', async (req, res) => {
             agendaContext[sender].paso = 'confirmacion';
             agendaContext[sender].accion = 'modificar';
           }
+        // --- Flujo de agendar cita ---
+        } else if (agendaContext[sender]?.paso && ['nombre','telefono','motivo','fecha','hora','confirmacion'].includes(agendaContext[sender].paso)) {
+          console.log(`➡️ Entrando en flujo agendar: paso ${agendaContext[sender].paso}`);
+          const resultado = await agenda.procesarPaso(sender, pool, agendaContext[sender].paso, content.trim(), agendaContext[sender]);
+
+          respuesta = resultado?.respuesta || "⚠️ Error: no se generó respuesta en agendar.";
+          agendaContext[sender].paso = resultado?.siguiente;
+
+          if (resultado?.siguiente === 'completo') {
+            delete agendaContext[sender];
+            delete menuContext[sender];
+            // ❌ No concatenes nada aquí, la respuesta ya está lista desde agendar.js
+          }
+        // --- Confirmacion ---
         } else if (agendaContext[sender]?.paso === 'confirmacion') {
           console.log("➡️ Entrando en flujo confirmacion");
           const v = Validators.menuOption(content.trim(), ['1','2']);
@@ -210,22 +224,6 @@ app.post('/webhook', async (req, res) => {
           }
         }
       }
-
-      // --- Flujo de agendar cita ---
-      else if (agendaContext[sender]?.paso && ['nombre','telefono','motivo','fecha','hora','confirmacion'].includes(agendaContext[sender].paso)) {
-        console.log(`➡️ Entrando en flujo agendar: paso ${agendaContext[sender].paso}`);
-        const resultado = await agenda.procesarPaso(sender, pool, agendaContext[sender].paso, content.trim(), agendaContext[sender]);
-
-        respuesta = resultado?.respuesta || "⚠️ Error: no se generó respuesta en agendar.";
-        agendaContext[sender].paso = resultado?.siguiente;
-
-        if (resultado?.siguiente === 'completo') {
-          delete agendaContext[sender];
-          delete menuContext[sender];
-          // ❌ No concatenes nada aquí, la respuesta ya está lista desde agendar.js
-        }
-      }
-
         // --- Menú principal ---
         else {
           console.log("➡️ Entrando en menú principal");
