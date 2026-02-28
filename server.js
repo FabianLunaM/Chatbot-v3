@@ -6,8 +6,7 @@ const { Pool } = require('pg');
 const axios = require('axios');
 const agenda = require('./functions/agendar'); 
 const consultar = require('./functions/consultar'); 
-const modificar = require('./functions/modificar');
-const cancelar = require('./functions/cancelar'); 
+const modificar = require('./functions/modificar'); 
 const { Validators } = require('./functions/validators'); 
 console.log("Agenda cargada:", agenda);
 
@@ -64,16 +63,6 @@ function iniciarTimeout(sender) {
     delete chatTimeouts[sender];
     await enviarMensaje(sender, "⏰ El chat se ha cerrado automáticamente por inactividad. Gracias por conversar con Amalgama.");
   }, 300000); // 5 minutos
-}
-
-function construirMenuCitas(citas) { 
-  let mensaje = "👉 Selecciona la cita que deseas gestionar:\n\n"; 
-  citas.forEach((cita, index) => { 
-    mensaje += `${index + 1}️⃣ 📅 ${cita.fecha} a las ${cita.hora} - ${cita.motivo}\n`; 
-  }); 
-  mensaje += "\n4️⃣ 🔙 Regresar al menú principal\n"; 
-  mensaje += "5️⃣ 🚪 Finalizar la conversación"; 
-  return mensaje; 
 }
 
 app.get('/', (req, res) => res.send('Ok'));
@@ -242,12 +231,18 @@ app.post('/webhook', async (req, res) => {
             switch (v.value) {
               case '1': // Modificar cita
                 const listadoMod = await modificar.listarCitasParaModificar(sender, pool);
-                respuesta = construirMenuCitas(listadoMod.citas);
+                respuesta = listadoMod.respuesta;
+                agendaContext[sender].paso = 'seleccion_cita';
+                agendaContext[sender].accion = 'modificar';
+                agendaContext[sender].citas = listadoMod.citas;
                 break;
 
               case '2': // Cancelar cita
                 const listadoCanc = await cancelar.listarCitasParaCancelar(sender, pool);
-                respuesta = construirMenuCitas(listadoMod.citas);
+                respuesta = listadoCanc.respuesta;
+                agendaContext[sender].paso = 'seleccion_cita';
+                agendaContext[sender].accion = 'cancelar';
+                agendaContext[sender].citas = listadoCanc.citas;
                 break;
 
               case '3': // Agendar nueva cita
@@ -259,28 +254,13 @@ app.post('/webhook', async (req, res) => {
                 break;
 
               case '4': // Salir al menú principal
-                mostrarMenuPrincipal();
-                respuesta = 
-                  `¡Hola ${pushName} 👋! Qué gusto saludarte nuevamente.\n\n` + 
-                  "👉 ¿Qué deseas hacer hoy?\n\n" + 
-                  "1️⃣ 📅 Agendar una cita\n" + 
-                  "2️⃣ 📖 Revisar tus citas agendadas\n" + 
-                  "3️⃣ ❓💡 Preguntar o consultar sobre nuestros servicios\n\n" + 
-                  "✨ Tu sonrisa es nuestra prioridad 😁";
-                 menuContext[sender] = true; // 👈 Reiniciamos el contexto de menú 
-                 delete agendaContext[sender]; // 👈 Limpiamos el contexto de agenda si estaba activo 
-                 break;
+                mostrarMenuPrincipal(); 
+                break;
 
               case '5': // Salir del chat
                 respuesta = "👋 Gracias por conversar con Amalgama. ¡Que tengas un excelente día!";
                 delete agendaContext[sender];
                 delete menuContext[sender]; 
-                break;
-
-              default: // Selección de cita válida 
-                const idx = parseInt(v.value, 10) - 1; 
-                const citaSeleccionada = ctx.citas[idx]; 
-                // Aquí procesas modificar/cancelar según ctx.accion 
                 break;
             }
           }

@@ -1,335 +1,255 @@
-console.log("Iniciando servidor Amalgama 🚀");
+// functions/agendar.js
 
-const express = require('express');
-const cors = require('cors');
-const { Pool } = require('pg');
-const axios = require('axios');
-const agenda = require('./functions/agendar'); 
-const consultar = require('./functions/consultar'); 
-const modificar = require('./functions/modificar'); 
-const { Validators } = require('./functions/validators'); 
-console.log("Agenda cargada:", agenda);
+const { Validators, parseFechaStr } = require('./validators');
 
-const app = express();
-app.use(cors());
-app.use(express.json());
+const DIAS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
 
-function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
+function formatFechaDia(fecha) {
+  const dd = String(fecha.getDate()).padStart(2, '0');
+  const mm = String(fecha.getMonth() + 1).padStart(2, '0');
+  const yyyy = fecha.getFullYear();
+  const diaNombre = DIAS[fecha.getDay()];
+  return `${diaNombre} ${dd}/${mm}/${yyyy}`;
 }
 
-// 👇 Nueva función para enviar mensajes
-async function enviarMensaje(sender, texto) {
-  if (!texto || texto.trim() === "") {
-    console.warn(`⚠️ No se envió mensaje a ${sender} porque la respuesta estaba vacía.`);
-    return;
-  }
-
-  await sleep(5000); // respetar límite de 5s
-  try {
-    await axios.post(
-      `${process.env.WASENDER_API_URL}/send-message`,
-      { to: sender, text: texto },
-      {
-        headers: {
-          Authorization: `Bearer ${process.env.WASENDER_API_KEY}`,
-          'Content-Type': 'application/json'
-        }
-      }
-    );
-    console.log(`🤖 Respuesta enviada a ${sender}`);
-  } catch (err) {
-    console.error("❌ Error enviando mensaje:", err.response?.data || err.message);
-  }
-}
-
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }
-});
-
-// Contextos en memoria
-const agendaContext = {}; 
-const menuContext = {};   
-const chatTimeouts = {}; // 👈 Nuevo: manejar temporizadores
-
-function iniciarTimeout(sender) {
-  if (chatTimeouts[sender]) {
-    clearTimeout(chatTimeouts[sender]);
-  }
-  chatTimeouts[sender] = setTimeout(async () => {
-    delete agendaContext[sender];
-    delete menuContext[sender];
-    delete chatTimeouts[sender];
-    await enviarMensaje(sender, "⏰ El chat se ha cerrado automáticamente por inactividad. Gracias por conversar con Amalgama.");
-  }, 300000); // 5 minutos
-}
-
-// 👇 Función centralizada para mostrar el menú principal
-function obtenerMenuPrincipal(pushName = "") {
+function horariosAtencionMensaje() {
   return (
-    `¡Hola ${pushName} 👋! Qué gusto saludarte nuevamente.\n\n` +
-    "👉 ¿Qué deseas hacer hoy?\n\n" +
-    "1️⃣ 📅 Agendar una cita\n" +
-    "2️⃣ 📖 Revisar tus citas agendadas\n" +
-    "3️⃣ ❓💡 Preguntar o consultar sobre nuestros servicios\n\n" +
-    "✨ Tu sonrisa es nuestra prioridad 😁"
+    "📌 Nuestros horarios de atención:\n\n" +
+    "• Lunes a Viernes: 09:00 a 11:30 y 14:30 a 19:00\n" +
+    "• Sábados: 09:00 a 11:30\n" +
+    "• Domingos: cerrado\n\n"
   );
 }
 
-// 👇 Función para construir menú de citas con formato uniforme
-function construirMenuCitas(citas) {
-  let mensaje = "👉 Selecciona la cita que deseas gestionar:\n\n";
-  citas.forEach((cita, index) => {
-    mensaje += `${index + 1}️⃣ 📅 ${cita.fecha} a las ${cita.hora} - ${cita.motivo}\n`;
-  });
-  mensaje += "\n4️⃣ 🔙 Regresar al menú principal\n";
-  mensaje += "5️⃣ 🚪 Finalizar la conversación";
-  return mensaje;
+/* ---------------------------------------------------------
+   Generar horarios válidos del día
+--------------------------------------------------------- */
+function generarHorariosDia(fecha) {
+  const diaSemana = fecha.getDay();
+  const horarios = [];
+
+  function pushRange(inicio, fin) {
+    for (let min = inicio; min <= fin; min += 30) {
+      const hh = String(Math.floor(min / 60)).padStart(2, '0');
+      const mm = String(min % 60).padStart(2, '0');
+      horarios.push(`${hh}:${mm}`);
+    }
+  }
+
+  if (diaSemana >= 1 && diaSemana <= 5) {
+    pushRange(9 * 60, 11 * 60 + 30);
+    pushRange(14 * 60 + 30, 19 * 60);
+  } else if (diaSemana === 6) {
+    pushRange(9 * 60, 11 * 60 + 30);
+  }
+
+  return horarios;
 }
 
-app.get('/', (req, res) => res.send('Ok'));
+/* ---------------------------------------------------------
+   FLUJO PRINCIPAL
+--------------------------------------------------------- */
+module.exports = {
+  
+  formatFechaDia,
+  iniciarAgenda: async () => {
+    return "📝 ¡Empecemos a agendar tu cita!\n\n" +
+           horariosAtencionMensaje() +
+           "Por favor, dime tu nombre completo:";
+  },
 
-app.get('/db-test', async (req, res) => {
-  try {
-    const result = await pool.query('SELECT NOW() as fecha');
-    res.json(result.rows[0]);
-  } catch (err) {
-    console.error('❌ Error en la BD:', err);
-    res.status(500).send('Error en la conexión a la BD');
-  }
-});
+  procesarPaso: async (sender, pool, paso, dato, contexto) => {
 
-app.post('/send-message', async (req, res) => {
-  const { to, text } = req.body;
-  try {
-    await enviarMensaje(to, text);
-    res.json({ status: "ok" });
-  } catch (err) {
-    console.error('❌ Error enviando mensaje:', err.response?.data || err.message);
-    res.status(500).send('Error enviando mensaje');
-  }
-});
+    // ------------------------------
+    // 1. NOMBRE
+    // ------------------------------
+    if (paso === 'nombre') {
+      const v = Validators.nombre(dato);
+      if (!v.ok)
+        return { siguiente: 'nombre', respuesta: `❌ ${v.error}\nEjemplo: Juan Pérez` };
 
-app.post('/webhook', async (req, res) => {
-  console.log('Headers recibidos:', req.headers);
-  console.log('Body recibido:', req.body);
-
-  const signature = req.headers['x-webhook-signature'];
-  if (signature !== process.env.WASENDER_WEBHOOK_SECRET) {
-    console.error('❌ Firma inválida');
-    return res.status(401).send('Firma inválida');
-  }
-
-  let sender, content, pushName;
-
-  if (req.body.event === 'webhook.test' && req.body.data?.message) {
-    sender = 'WaSenderTest';
-    content = req.body.data.message;
-  } else if (req.body.event === 'messages.received' && req.body.data?.messages) {
-    const msg = req.body.data.messages;
-    sender = msg.remoteJid;
-    content = msg.messageBody;
-    pushName = msg.pushName || '';
-  }
-
-  console.log(`📩 Mensaje recibido de ${sender}: ${content}`);
-
-  try {
-    if (content && sender) {
-      await pool.query(
-        'INSERT INTO interactions (patient_id, message_in, sender) VALUES ($1, $2, $3)',
-        [null, content, sender]
-      );
-      console.log('💾 Mensaje guardado en BD');
-
-      const check = await pool.query(
-        'SELECT COUNT(*) FROM interactions WHERE sender = $1',
-        [sender]
-      );
-      const count = parseInt(check.rows[0].count, 10);
-
-      let respuesta;
-
-      if (content.trim().toLowerCase() === 'salir') {
-        respuesta = "👋 Gracias por conversar con Amalgama. ¡Que tengas un excelente día!";
-        delete agendaContext[sender];
-        delete menuContext[sender];
-      } else if (count === 1) {
-        respuesta =
-          "🦷✨ ¡Hola! Bienvenido(a) al Consultorio Dental Ortodent 💙\n" +
-          "Tu sonrisa es nuestra prioridad 😁✨\n\n" +
-          "Soy Amalgama, tu asistente virtual 🤖💬, y estoy aquí para ayudarte.\n\n" +
-          "👉 ¿Qué deseas hacer hoy?\n\n" +
-          "1️⃣ 📅 Agendar una cita\n" +
-          "2️⃣ 📖 Revisar tus citas agendadas\n" +
-          "3️⃣ ❓💡 Preguntar o consultar sobre nuestros servicios\n\n" +
-          "✨ ¡Tu salud dental está en buenas manos!";
-        menuContext[sender] = true;
-      } else {
-        // --- Flujo de agenda y gestión de citas ---
-        if (agendaContext[sender]?.paso === 'seleccion_cita') {
-          const ctx = agendaContext[sender];
-          const v = Validators.menuOption(
-            content.trim(),
-            [...Array(ctx.citas.length).keys()].map(i => (i+1).toString()).concat(['4','5'])
-          );
-
-          if (!v.ok) {
-            respuesta = `❌ ${v.error}\n\n👉 Selecciona una cita con su número, o usa 4 para regresar al menú principal, o 5 para finalizar la conversación.`;
-          } else {
-            switch (v.value) {
-              case '4':
-                respuesta = obtenerMenuPrincipal(pushName);
-                menuContext[sender] = true;
-                delete agendaContext[sender];
-                break;
-              case '5':
-                respuesta = "👋 Gracias por conversar con Amalgama. ¡Que tengas un excelente día!";
-                delete agendaContext[sender];
-                delete menuContext[sender];
-                break;
-              default:
-                const idx = parseInt(v.value, 10) - 1;
-                const citaSeleccionada = ctx.citas[idx];
-                if (ctx.accion === 'cancelar') {
-                  respuesta = await modificar.cancelarCita(pool, citaSeleccionada.id);
-                  delete agendaContext[sender];
-                } else if (ctx.accion === 'modificar') {
-                  respuesta = "🔄 Por favor indícame la nueva fecha (DD/MM/AAAA) para tu cita.";
-                  ctx.paso = 'modificar_fecha';
-                  ctx.citaId = citaSeleccionada.id;
-                }
-                break;
-            }
-          }
-        }
-                // --- Flujo consultar_menu ---
-        else if (agendaContext[sender]?.paso === 'consultar_menu') {
-          console.log("➡️ Entrando en flujo consultar_menu");
-          const v = Validators.menuOption(content.trim(), ['1','2','3','4','5']); 
-          if (!v.ok) { 
-            respuesta = `❌ ${v.error}\n\n👉 Responde con 1, 2, 3, 4 o 5.`; 
-          } else {
-            switch (v.value) {
-              case '1': // Modificar cita
-                const listadoMod = await modificar.listarCitasParaModificar(sender, pool);
-                respuesta = construirMenuCitas(listadoMod.citas);
-                agendaContext[sender].paso = 'seleccion_cita';
-                agendaContext[sender].accion = 'modificar';
-                agendaContext[sender].citas = listadoMod.citas;
-                break;
-
-              case '2': // Cancelar cita
-                const listadoCanc = await modificar.listarCitasParaModificar(sender, pool);
-                respuesta = construirMenuCitas(listadoCanc.citas);
-                agendaContext[sender].paso = 'seleccion_cita';
-                agendaContext[sender].accion = 'cancelar';
-                agendaContext[sender].citas = listadoCanc.citas;
-                break;
-
-              case '3': // Agendar nueva cita
-                agendaContext[sender] = { paso: 'nombre', nombre: '', motivo: '' };
-                respuesta = await agenda.iniciarAgenda();
-                if (!respuesta || respuesta.trim() === ""){
-                  respuesta = "📝 Vamos a agendar tu cita. Por favor dime tu nombre completo:";
-                }
-                break;
-
-              case '4': // Regresar al menú principal
-                respuesta = obtenerMenuPrincipal(pushName);
-                menuContext[sender] = true;
-                delete agendaContext[sender];
-                break;
-
-              case '5': // Finalizar conversación
-                respuesta = "👋 Gracias por conversar con Amalgama. ¡Que tengas un excelente día!";
-                delete agendaContext[sender];
-                delete menuContext[sender]; 
-                break;
-            }
-          }
-        }
-
-        // --- Flujo menú principal ---
-        else {
-          console.log("➡️ Entrando en menú principal");
-          if (!menuContext[sender]) {
-            respuesta = obtenerMenuPrincipal(pushName);
-            menuContext[sender] = true;
-          } else {
-            const v = Validators.menuOption(content.trim(), ['1','2','3']);
-            if (!v.ok) {
-              respuesta = `❌ ${v.error}\n\n👉 Por favor responde con el número de la opción.`;
-            } else {
-              switch (v.value) {
-                case '1':
-                  // Validar citas pendientes antes de iniciar agenda 
-                  const paciente = await pool.query('SELECT id FROM patients WHERE sender = $1', [sender]); 
-                  if (paciente.rowCount > 0) { 
-                    const patientId = paciente.rows[0].id; 
-                    const citasPendientes = await pool.query(
-                      'SELECT COUNT(*) FROM appointments WHERE patient_id = $1 AND status = $2', 
-                      [patientId, 'pendiente'] 
-                    ); 
-                    if (parseInt(citasPendientes.rows[0].count, 10) >= 3) { 
-                      respuesta = 
-                      "❌ Ya tienes 3 citas pendientes registradas. No puedes agendar más hasta que alguna se complete o se cancele.\n\n"+
-                      "Gracias por cantactarte con el consultorio dental Ortodent. Hasta pronto✨"; 
-                      delete agendaContext[sender];
-                      delete menuContext[sender];
-                      break; 
-                    } 
-                  } 
-                  // Si no tiene 3 pendientes, iniciar flujo normal
-                  agendaContext[sender] = { paso: 'nombre', nombre: '', motivo: '' };
-                  respuesta = await agenda.iniciarAgenda();
-                  break;
-
-                case '2':
-                  const consulta = await consultar.consultarCitas(sender, pool); 
-                  respuesta = construirMenuCitas(consulta.citas);
-                  agendaContext[sender] = { paso: 'consultar_menu', citas: consulta.citas };
-                  break;
-
-                case '3':
-                  respuesta = "💡 Puedes consultar nuestros servicios odontológicos. ¿Qué deseas saber?";
-                  break;
-              }
-            }
-          }
-        }
-      }
-
-      // 👇 Fallback global 
-      if (!respuesta || respuesta.trim() === "") { 
-        console.error("⚠️ Flujo sin respuesta, aplicando fallback"); 
-        respuesta = "⚠️ Hubo un error en el flujo. Escribe '1' para agendar una cita o '2' para salir."; 
-      }
-
-      // Reiniciar temporizador de inactividad SOLO si el chat sigue activo
-      if (agendaContext[sender] || menuContext[sender]) {
-        iniciarTimeout(sender);
-      } else {
-        // Si el flujo terminó, limpiar cualquier timeout pendiente
-        if (chatTimeouts[sender]) {
-          clearTimeout(chatTimeouts[sender]);
-          delete chatTimeouts[sender];
-        }
-      }
-
-      // 👇 Enviar solo una vez
-      await enviarMensaje(sender, respuesta);
+      contexto.nombre = v.value;
+      return {
+        siguiente: 'telefono',
+        respuesta: `✅ Gracias ${contexto.nombre}. Ahora dime tu numero de celular:`
+      };
     }
-  } catch (err) {
-    console.error('❌ Error en webhook:', err);
+
+    // ----------------------------
+    // 2. TELÉFONO 
+    // ----------------------------
+    if (paso === 'telefono') { 
+      const v = Validators.telefono(dato); 
+      if (!v.ok) 
+        return { siguiente: 'telefono', respuesta: `❌ ${v.error}\nEjemplo: 60510522` }; 
+      
+      contexto.telefono = v.value; 
+      return { 
+        siguiente: 'motivo', 
+        respuesta: "✅ Perfecto. Ahora dime el motivo de tu consulta:" 
+      };
+    }
+
+    // ------------------------------
+    // 3. MOTIVO
+    // ------------------------------
+    if (paso === 'motivo') {
+      const v = Validators.motivo(dato);
+      if (!v.ok)
+        return { siguiente: 'motivo', respuesta: `❌ ${v.error}\nEjemplo: Consulta inicial` };
+
+      contexto.motivo = v.value;
+      return {
+        siguiente: 'fecha',
+        respuesta: "🗓️ Perfecto. ¿Qué fecha deseas para tu cita?\nFormato: DD/MM/AAAA\nEjemplo: 11/12/2026"
+      };
+    }
+
+    // ------------------------------
+    // 4. FECHA
+    // ------------------------------
+    if (paso === 'fecha') {
+      const v = Validators.fecha(dato);
+      if (!v.ok){
+        return { siguiente: 'fecha', respuesta: `❌ ${v.error}\nEjemplo: 11/12/2026` };
+      }
+
+      contexto.fecha = v.value;
+      contexto.fechaStr =
+        `${String(contexto.fecha.getDate()).padStart(2, '0')}/` +
+        `${String(contexto.fecha.getMonth() + 1).padStart(2, '0')}/` +
+        `${contexto.fecha.getFullYear()}`;
+
+      // 👉 Generar lista de horarios disponibles
+      const horariosDia = generarHorariosDia(contexto.fecha);
+      const disponibles = [];
+      for (let h of horariosDia) {
+        const result = await pool.query(
+          'SELECT 1 FROM appointments WHERE date = $1 AND time = $2 LIMIT 1',
+          [contexto.fecha, h]
+        );
+        if (result.rowCount === 0) disponibles.push(h);
+      }
+
+      if (disponibles.length === 0) {
+        return { siguiente: 'fecha', respuesta: "❌ No hay horarios disponibles en esa fecha. Por favor elige otra." };
+      }
+
+      contexto.horariosDisponibles = disponibles;
+
+      const lista = disponibles.map((h, idx) => `${idx+1}️⃣ ${h}`).join("\n");
+
+      return {
+        siguiente: 'hora',
+        respuesta:
+          `📅 Excelente. La fecha seleccionada es *${formatFechaDia(contexto.fecha)}*.\n\n` +
+          "⏰ Estos son los horarios disponibles:\n\n" +
+          lista + "\n\n" +
+          "👉 Por favor responde con el número de la opción."
+      };
+    }
+
+    // ------------------------------
+    // 5. HORA (selección por número)
+    // ------------------------------
+    if (paso === 'hora') {
+      const idx = parseInt(dato.trim(), 10) - 1;
+      if (isNaN(idx) || idx < 0 || idx >= contexto.horariosDisponibles.length) {
+        const lista = contexto.horariosDisponibles.map((h, i) => `${i+1}️⃣ ${h}`).join("\n");
+        return { siguiente: 'hora', respuesta: `❌ Número inválido. Selecciona un horario de la lista:\n\n${lista}` };
+      }
+
+      contexto.horaStr = contexto.horariosDisponibles[idx];
+
+      return { 
+        siguiente: 'confirmacion', 
+        respuesta: `📅 Has seleccionado *${formatFechaDia(contexto.fecha)}* a las *${contexto.horaStr}*.\n\n` + 
+        "¿Estás seguro de esta fecha y hora?\n\n" + 
+        "1️⃣ Sí, confirmar\n" + 
+        "2️⃣ No, elegir otra fecha"
+      };
+    }
+    
+    // ------------------------------
+    // 6. CONFIRMACIÓN
+    // ------------------------------
+    if (paso === 'confirmacion') {
+      const v = Validators.menuOption(dato, ['1','2']);
+      if (!v.ok)
+        return { siguiente: 'confirmacion', respuesta: `❌ ${v.error}\n\n👉 Responde con 1 o 2.` };
+
+      if (v.value === '1') {
+        // Guardar paciente
+        let paciente = await pool.query('SELECT * FROM patients WHERE sender = $1', [sender]);
+        let patientId;
+
+        if (paciente.rowCount === 0) {
+          const nuevo = await pool.query(
+            'INSERT INTO patients (name, phone, sender) VALUES ($1, $2, $3) RETURNING id',
+            [contexto.nombre, contexto.telefono, sender]
+          );
+          patientId = nuevo.rows[0].id;
+        } else {
+          patientId = paciente.rows[0].id;
+        }
+
+        // Restricción: máximo 3 citas activas 
+        const citasActivas = await pool.query( 
+          'SELECT COUNT(*) FROM appointments WHERE patient_id = $1 AND status = $2', 
+          [patientId, 'pendiente'] 
+        ); 
+        
+        if (parseInt(citasActivas.rows[0].count, 10) >= 3) { 
+          return { 
+            siguiente: 'completo', 
+            respuesta: "❌ Ya tienes 3 citas activas registradas. No puedes agendar más hasta que alguna se complete o se cancele.\n\n👋 Gracias por conversar con Amalgama. ¡Que tengas un excelente día!"
+          }; 
+        }
+
+        // Verificar disponibilidad (aunque ya se filtró antes, se revalida)
+        const ocupado = await pool.query(
+          'SELECT 1 FROM appointments WHERE date = $1 AND time = $2 LIMIT 1',
+          [contexto.fecha, contexto.horaStr]
+        );
+
+        if (ocupado.rowCount > 0) {
+          return {
+            siguiente: 'hora',
+            respuesta: "⚠️ Ese horario ya está ocupado. Por favor selecciona otro de la lista disponible."
+          };
+        }     
+
+        // Registrar cita
+        await pool.query(
+          'INSERT INTO appointments (patient_id, date, time, reason, duration, status) VALUES ($1, $2, $3, $4, $5, $6)',
+          [patientId, contexto.fecha, contexto.horaStr, contexto.motivo, 30, 'pendiente']
+        );
+
+        return {
+          siguiente: 'completo',
+          respuesta:
+            `🎉 La cita se agendó para el paciente *${contexto.nombre}*, con el número de celular *${contexto.telefono}*, para la fecha:\n\n` +
+            `*${formatFechaDia(contexto.fecha)}* a las *${contexto.horaStr}*.\n\n` +
+            "Recuerda que puedes reprogramar o cancelar la cita hasta con 24 horas de anticipación.\n\n" +
+            "Gracias por contactarte con el Consultorio Dental Ortodent."
+        };
+      }
+
+      if (v.value === '2') {
+        // Volver a pedir fecha
+        return {
+          siguiente: 'fecha',
+          respuesta: "🔄 Entendido. Por favor indícame una nueva fecha (DD/MM/AAAA)."
+        };
+      }
+    }
+
+    // ------------------------------
+    // FLUJO NO RECONOCIDO
+    // ------------------------------
+    return {
+      siguiente: 'completo',
+      respuesta: "❌ Flujo no reconocido. Escribe '1' para iniciar de nuevo."
+    };
   }
-
-  res.send('ok');
-});
-
-const PORT = process.env.PORT || 3000;
-const HOST = '0.0.0.0';
-app.listen(PORT, HOST, () => {
-  console.log(`Servidor corriendo en puerto ${PORT}`);
-});
+};
