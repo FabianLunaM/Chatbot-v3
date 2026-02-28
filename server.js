@@ -268,14 +268,15 @@ app.post('/webhook', async (req, res) => {
                       // Enviar segundo mensaje con menú principal 
                       await enviarMensaje(sender, mostrarMenuPrincipal(pushName)); 
                       
-                      // No iniciar flujo de agendar
-                      break; 
+                      // 👉 Salir del webhook para no pasar al fallback 
+                      return res.send('ok');
                     }
                   }
 
                   agendaContext[sender] = { paso: 'nombre', nombre: '', motivo: '' };
                   respuesta = await agenda.iniciarAgenda();
                   break;
+                  
                 case '2':
                   console.log("➡️ Usuario eligió consultar citas");
                   const consulta = await consultar.consultarCitas(sender, pool); 
