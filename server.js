@@ -6,7 +6,8 @@ const { Pool } = require('pg');
 const axios = require('axios');
 const agenda = require('./functions/agendar'); 
 const consultar = require('./functions/consultar'); 
-const modificar = require('./functions/modificar'); 
+const modificar = require('./functions/modificar');
+const cancelar = require('./functions/cancelar'); 
 const { Validators } = require('./functions/validators'); 
 console.log("Agenda cargada:", agenda);
 
