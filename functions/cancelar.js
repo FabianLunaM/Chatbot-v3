@@ -1,6 +1,11 @@
 // functions/cancelar.js
 const { formatFechaDia } = require('./agendar');
 
+function numeroEmoji(n) { 
+  const emojis = ['1️⃣','2️⃣','3️⃣','4️⃣','5️⃣']; 
+  return emojis[n-1] || `${n}️⃣`; 
+}
+
 module.exports = {
   listarCitasParaCancelar: async (sender, pool) => {
     const result = await pool.query(
@@ -20,7 +25,7 @@ module.exports = {
     let respuesta = "❌ Estas son tus citas activas:\n\n";
     result.rows.forEach((row, idx) => {
       const fechaObj = new Date(row.date);
-      respuesta += `${idx + 1}️⃣ ${formatFechaDia(fechaObj)} a las ${row.time}\n   Motivo: ${row.reason}\n\n`;
+      respuesta += `${numeroEmoji(idx + 1)} ${formatFechaDia(fechaObj)} a las ${row.time}\n Motivo: ${row.reason}\n\n`;
     });
 
     // Opciones adicionales
