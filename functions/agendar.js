@@ -45,13 +45,13 @@ function generarHorariosDia(fecha) {
 
   return horarios;
 }
-
 /* ---------------------------------------------------------
    FLUJO PRINCIPAL
 --------------------------------------------------------- */
 module.exports = {
   
   formatFechaDia,
+  generarHorariosDia, 
   iniciarAgenda: async () => {
     return "📝 ¡Empecemos a agendar tu cita!\n\n" +
            horariosAtencionMensaje() +
