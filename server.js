@@ -177,7 +177,7 @@ app.post('/webhook', async (req, res) => {
           }
         // --- Confirmacion ---
         } else if (agendaContext[sender]?.paso === 'confirmacion') {
-          console.log("➡️ Entrando en flujo confirmacion");
+          console.log(`➡️ Entrando en flujo confirmacion (${agendaContext[sender].accion})`);
           const v = Validators.menuOption(content.trim(), ['1','2']);
           if (!v.ok) respuesta = `❌ ${v.error}\n\n👉 Responde con 1 (Sí) o 2 (No).`;
           else {
@@ -215,6 +215,7 @@ app.post('/webhook', async (req, res) => {
             case '2': // Cancelar cita
               const canc = await cancelar.listarCitasParaCancelar(sender, pool);
               respuesta = canc.respuesta;
+              delete agendaContext[sender];
               agendaContext[sender] = { paso: 'seleccion_cita', citas: canc.citas, accion: 'cancelar' };
               break;
             case '3': // Agendar nueva cita
@@ -276,7 +277,7 @@ app.post('/webhook', async (req, res) => {
                   agendaContext[sender] = { paso: 'nombre', nombre: '', motivo: '' };
                   respuesta = await agenda.iniciarAgenda();
                   break;
-                  
+
                 case '2':
                   console.log("➡️ Usuario eligió consultar citas");
                   const consulta = await consultar.consultarCitas(sender, pool); 
