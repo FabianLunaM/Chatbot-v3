@@ -226,6 +226,8 @@ app.post('/webhook', async (req, res) => {
           // 👇 Solo añade cierre si quieres, pero asegúrate de que respuesta ya existe
           if (respuesta) {
             respuesta += "\n\n👋 Gracias por conversar con Amalgama. ¡Que tengas un excelente día!";
+          } else { 
+            respuesta = "👋 Gracias por conversar con Amalgama. ¡Que tengas un excelente día!"; 
           }
         }
       }

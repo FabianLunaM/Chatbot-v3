@@ -220,6 +220,9 @@ module.exports = {
         }     
 
         // Registrar cita
+        const fechaISO = contexto.fecha.toISOString().split('T')[0]; // YYYY-MM-DD 
+        const horaStr = contexto.horaStr; // "09:00"
+        
         console.log("➡️ Insertando cita:", patientId, contexto.fecha, contexto.horaStr, contexto.motivo);
         await pool.query(
           'INSERT INTO appointments (patient_id, date, time, reason, duration, status) VALUES ($1, $2, $3, $4, $5, $6)',
