@@ -1,11 +1,7 @@
 // functions/modificar.js
 const { formatFechaDia, generarHorariosDia } = require('./agendar');
 const { Validators } = require('./validators');
-
-function numeroEmoji(n) { 
-  const emojis = ['1️⃣','2️⃣','3️⃣','4️⃣','5️⃣']; 
-  return emojis[n-1] || `${n}️⃣`; 
-}
+const { numeroEmoji } = require('./numeroEmoji');
 
 module.exports = {
   listarCitasParaModificar: async (sender, pool) => {
