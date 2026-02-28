@@ -81,7 +81,7 @@ module.exports = {
     if (paso === 'telefono') { 
       const v = Validators.telefono(dato); 
       if (!v.ok) 
-        return { siguiente: 'telefono', respuesta: `❌ ${v.error}\nEjemplo: 78835733` }; 
+        return { siguiente: 'telefono', respuesta: `❌ ${v.error}\nEjemplo: 60510522` }; 
       
       contexto.telefono = v.value; 
       return { 
@@ -101,7 +101,7 @@ module.exports = {
       contexto.motivo = v.value;
       return {
         siguiente: 'fecha',
-        respuesta: "🗓️ Perfecto. ¿Qué fecha deseas para tu cita?\nFormato: DD/MM/AAAA\nEjemplo: 11/12/2025"
+        respuesta: "🗓️ Perfecto. ¿Qué fecha deseas para tu cita?\nFormato: DD/MM/AAAA\nEjemplo: 11/12/2026"
       };
     }
 

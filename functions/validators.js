@@ -49,6 +49,7 @@ const Validators = {
     if (!fecha) return { ok: false, error: 'La fecha no es válida. Usa el formato DD/MM/AAAA.' };
     const hoy = new Date(); 
     hoy.setHours(0,0,0,0); // normalizar
+    fecha.setHours(0,0,0,0); // normalizar también la fecha ingresada
     
     if (fecha.getTime() === hoy.getTime()) { 
       return { ok: false, error: 'No puedes agendar citas el mismo día. Debes elegir una fecha con al menos 1 día de anticipación.' };
