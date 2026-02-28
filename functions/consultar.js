@@ -59,7 +59,8 @@ module.exports = {
                  "1️⃣ ✏️ Modificar una cita\n" + 
                  "2️⃣ ❌ Cancelar una cita\n" + 
                  "3️⃣ 📅 Agendar una nueva cita\n" + 
-                 "4️⃣ 🔙 Salir al menú principal";
+                 "4️⃣ 🔙 Regresar al menú principal\n"+
+                 "5️⃣ 🚪 Finalizar la conversación";
 
     return { respuesta, citas: citasActivas };
   }

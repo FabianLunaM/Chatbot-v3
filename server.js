@@ -224,9 +224,9 @@ app.post('/webhook', async (req, res) => {
         }
         else if (agendaContext[sender]?.paso === 'consultar_menu') { 
           console.log("➡️ Entrando en flujo consultar_menu");
-          const v = Validators.menuOption(content.trim(), ['1','2','3','4']); 
+          const v = Validators.menuOption(content.trim(), ['1','2','3','4','5']); 
           if (!v.ok) { 
-            respuesta = `❌ ${v.error}\n\n👉 Responde con 1, 2, 3 o 4.`; 
+            respuesta = `❌ ${v.error}\n\n👉 Responde con 1, 2, 3, 4 o 5.`; 
           } else {
             switch (v.value) {
               case '1': // Modificar cita
@@ -254,6 +254,10 @@ app.post('/webhook', async (req, res) => {
                 break;
 
               case '4': // Salir al menú principal
+                mostrarMenuPrincipal(); 
+                break;
+
+              case '5': // Salir del chat
                 respuesta = "👋 Gracias por conversar con Amalgama. ¡Que tengas un excelente día!";
                 delete agendaContext[sender];
                 delete menuContext[sender]; 
@@ -304,13 +308,6 @@ app.post('/webhook', async (req, res) => {
                   const consulta = await consultar.consultarCitas(sender, pool); 
                   respuesta = consulta.respuesta; 
                   agendaContext[sender] = { paso: 'consultar_menu', citas: consulta.citas };
-
-                 // if (consulta.citas.length > 0) {
-                 //   agendaContext[sender] = { paso: 'gestion_citas', citas: consulta.citas }; 
-                  //} else { 
-                  //  agendaContext[sender] = { paso: 'consultar_menu', citas: []}; 
-                 // } 
-                 
                   break;
                 case '3':
                   respuesta = "💡 Puedes consultar nuestros servicios odontológicos. ¿Qué deseas saber?";
