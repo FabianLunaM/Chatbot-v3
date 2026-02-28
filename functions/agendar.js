@@ -129,10 +129,19 @@ module.exports = {
 
       const hoy = new Date(); 
       hoy.setHours(0,0,0,0); 
+      
+      if (contexto.fecha <= hoy) { 
+        return { siguiente: 'fecha', respuesta: "❌ No puedes agendar citas para el mismo día. Debes elegir una fecha con al menos 1 día de anticipación.\nEjemplo: 28/02/2026" 
+        }; 
+      }
+      
       const limite = new Date(hoy); 
       limite.setDate(limite.getDate() + 14); 
       if (contexto.fecha > limite) { 
-        return { siguiente: 'fecha', respuesta: "❌ Solo puedes agendar citas hasta 2 semanas desde hoy. Por favor elige una fecha más cercana." }; 
+        return { 
+          siguiente: 'fecha', 
+          respuesta: "❌ Solo puedes agendar citas hasta 2 semanas desde hoy. Por favor elige una fecha más cercana." 
+        }; 
       }
 
       // 👉 Generar lista de horarios disponibles
