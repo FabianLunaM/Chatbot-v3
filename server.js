@@ -149,7 +149,7 @@ app.post('/webhook', async (req, res) => {
         respuesta = mostrarMenuPrincipal(pushName);
         menuContext[sender] = true;
       } else {
-        if (agendaContext[sender] && agendaContext[sender].paso !== 'consultar_menu') {
+        if (agendaContext[sender] && agendaContext[sender].paso !== 'consultar_menu' && agendaContext[sender].paso !== 'seleccion_cita') {
           const ctx = agendaContext[sender];
           const paso = ctx.paso;
           const result = await agenda.procesarPaso(sender, pool, paso, content.trim(), ctx);
@@ -208,7 +208,71 @@ app.post('/webhook', async (req, res) => {
             }
           }
         }
-        
+
+        // 👇 Flujo de selección de cita (modificar/cancelar)
+        else if (agendaContext[sender]?.paso === 'seleccion_cita') {
+          const ctx = agendaContext[sender];
+          const totalOpciones = ctx.citas.length + 2; // citas + regresar + finalizar
+          const opcionesValidas = Array.from({length: totalOpciones}, (_, i) => String(i+1));
+          const v = Validators.menuOption(content.trim(), opcionesValidas);
+
+          if (!v.ok) {
+            respuesta = `❌ ${v.error}\n\n👉 Responde con un número entre 1 y ${totalOpciones}.`;
+          } else {
+            const opcion = parseInt(v.value, 10);
+
+            if (opcion <= ctx.citas.length) {
+              const citaId = ctx.citas[opcion - 1].id;
+              if (ctx.accion === 'cancelar') {
+                respuesta = await cancelar.cancelarCita(pool, citaId);
+                delete agendaContext[sender];
+              } else if (ctx.accion === 'modificar') {
+                respuesta = "🔄 Por favor indícame la nueva fecha (DD/MM/AAAA) para tu cita.";
+                ctx.paso = 'modificar_fecha';
+                ctx.citaId = citaId;
+              }
+            } else if (opcion === ctx.citas.length + 1) {
+              // Regresar al menú principal
+              respuesta = mostrarMenuPrincipal(pushName);
+              delete agendaContext[sender];
+              menuContext[sender] = true;
+            } else if (opcion === ctx.citas.length + 2) {
+              // Finalizar conversación
+              respuesta = "👋 Gracias por conversar con Amalgama. ¡Que tengas un excelente día!";
+              delete agendaContext[sender];
+              delete menuContext[sender];
+            }
+          }
+        }
+
+        // 👇 Flujo de modificación de fecha/hora
+        else if (agendaContext[sender]?.paso === 'modificar_fecha') {
+          const v = Validators.fecha(content.trim());
+          if (!v.ok) {
+            respuesta = `❌ ${v.error}\nEjemplo: 11/12/2026`;
+          } else {
+            agendaContext[sender].nuevaFechaObj = v.value;
+            respuesta = "⏰ Ahora indícame la nueva hora (HH:MM).";
+            agendaContext[sender].paso = 'modificar_hora';
+          }
+        }
+
+        else if (agendaContext[sender]?.paso === 'modificar_hora') {
+          const v = Validators.hora(content.trim());
+          if (!v.ok) {
+            respuesta = `❌ ${v.error}\nEjemplo: 09:30`;
+          } else {
+            agendaContext[sender].nuevaHora = content.trim();
+            respuesta = await modificar.modificarCita(
+              pool,
+              agendaContext[sender].citaId,
+              agendaContext[sender].nuevaFechaObj,
+              agendaContext[sender].nuevaHora
+            );
+            delete agendaContext[sender];
+          }
+        }
+
         // 👇 Menú principal
         else {
           console.log("➡️ Entrando en menú principal");
@@ -291,3 +355,5 @@ const HOST = '0.0.0.0';
 app.listen(PORT, HOST, () => {
   console.log(`Servidor corriendo en puerto ${PORT}`);
 });
+
+

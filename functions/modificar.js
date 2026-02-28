@@ -9,7 +9,8 @@ module.exports = {
        FROM appointments a
        JOIN patients p ON a.patient_id = p.id
        WHERE p.sender = $1 AND a.status = 'pendiente'
-       ORDER BY a.date, a.time`,
+       ORDER BY a.date, a.time
+       LIMIT 3`, //MAXIMO 3 CITAS
       [sender]
     );
 
@@ -23,8 +24,13 @@ module.exports = {
       respuesta += `${idx + 1}. ${formatFechaDia(fechaObj)} a las ${row.time}\n   Motivo: ${row.reason}\n\n`;
     });
 
-    respuesta += "👉 Responde con el número de la cita que deseas modificar.\n" +
-                 "O escribe '0' para volver al menú principal.";
+    // Opciones adicionales 
+    
+    const regresarNum = result.rows.length + 1; 
+    const salirNum = result.rows.length + 2; 
+    
+    respuesta += `${regresarNum}️⃣ 🔙 Regresar al menú principal\n`; 
+    respuesta += `${salirNum}️⃣ ❌ Finalizar la conversación`;
 
     return { respuesta, citas: result.rows };
   },
