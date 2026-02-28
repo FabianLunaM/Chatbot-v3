@@ -303,11 +303,14 @@ app.post('/webhook', async (req, res) => {
                 case '2':
                   const consulta = await consultar.consultarCitas(sender, pool); 
                   respuesta = consulta.respuesta; 
-                  if (consulta.citas.length > 0) {
-                    agendaContext[sender] = { paso: 'gestion_citas', citas: consulta.citas }; 
-                  } else { 
-                    agendaContext[sender] = { paso: 'consultar_menu', citas: []}; 
-                  } 
+                  agendaContext[sender] = { paso: 'consultar_menu', citas: consulta.citas };
+
+                 // if (consulta.citas.length > 0) {
+                 //   agendaContext[sender] = { paso: 'gestion_citas', citas: consulta.citas }; 
+                  //} else { 
+                  //  agendaContext[sender] = { paso: 'consultar_menu', citas: []}; 
+                 // } 
+                 
                   break;
                 case '3':
                   respuesta = "💡 Puedes consultar nuestros servicios odontológicos. ¿Qué deseas saber?";

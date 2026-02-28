@@ -1,6 +1,6 @@
 // functions/modificar.js
-const { formatFechaDia } = require('./agendar');
-const { Validators, parseFechaStr } = require('./validators');
+const { formatFechaDia, generarHorariosDia } = require('./agendar');
+const { Validators } = require('./validators');
 
 module.exports = {
   listarCitasParaModificar: async (sender, pool) => {
@@ -29,24 +29,46 @@ module.exports = {
     return { respuesta, citas: result.rows };
   },
 
-  modificarCita: async (pool, citaId, nuevaFecha, nuevaHora) => {
-    const fechaObj = parseFechaStr(nuevaFecha);
-    if (!fechaObj) return "❌ La fecha no es válida. Usa el formato DD/MM/AAAA.";
+  pedirNuevaFecha: () => {
+    return "🗓️ Por favor indícame la nueva fecha (DD/MM/AAAA) para tu cita.";
+  },
 
-    // Validar que el horario no esté ocupado
-    const ocupado = await pool.query(
-      'SELECT 1 FROM appointments WHERE date = $1 AND time = $2 AND status = $3',
-      [fechaObj, nuevaHora, 'pendiente']
-    );
-    if (ocupado.rowCount > 0) {
-      return "⚠️ Ese horario ya está ocupado. Por favor selecciona otro.";
+  validarNuevaFecha: (dato) => {
+    const v = Validators.fecha(dato); // ✅ aplica todas las restricciones unificadas
+    if (!v.ok) {
+      return { error: `❌ ${v.error}\nEjemplo: 11/12/2026` };
+    }
+    return { fechaObj: v.value };
+  },
+
+  pedirNuevaHora: async (pool, fechaObj) => {
+    const horariosDia = generarHorariosDia(fechaObj);
+    const disponibles = [];
+    for (let h of horariosDia) {
+      const result = await pool.query(
+        'SELECT 1 FROM appointments WHERE date = $1 AND time = $2 AND status = $3',
+        [fechaObj, h, 'pendiente']
+      );
+      if (result.rowCount === 0) disponibles.push(h);
     }
 
+    if (disponibles.length === 0) {
+      return { error: "❌ No hay horarios disponibles en esa fecha. Por favor elige otra." };
+    }
+
+    const lista = disponibles.map((h, idx) => `${idx+1}️⃣ ${h}`).join("\n");
+    return {
+      disponibles,
+      mensaje: `⏰ Estos son los horarios disponibles para *${formatFechaDia(fechaObj)}*:\n\n${lista}\n\n👉 Responde con el número de la opción.`
+    };
+  },
+
+  modificarCita: async (pool, citaId, nuevaFechaObj, nuevaHoraStr) => {
     await pool.query(
       'UPDATE appointments SET date = $1, time = $2 WHERE id = $3',
-      [fechaObj, nuevaHora, citaId]
+      [nuevaFechaObj, nuevaHoraStr, citaId]
     );
 
-    return `✅ La cita ha sido reprogramada para el día ${nuevaFecha} a las ${nuevaHora}.`;
+    return `✅ La cita ha sido reprogramada para el día ${formatFechaDia(nuevaFechaObj)} a las ${nuevaHoraStr}.`;
   }
 };
