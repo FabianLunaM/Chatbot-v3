@@ -110,34 +110,15 @@ module.exports = {
     // ------------------------------
     if (paso === 'fecha') {
       const v = Validators.fecha(dato);
-      const FERIADOS = ["01/01/2026","25/12/2026","16/02/2026","17/02/2026"];
-      if (!v.ok)
+      if (!v.ok){
         return { siguiente: 'fecha', respuesta: `❌ ${v.error}\nEjemplo: 11/12/2026` };
+      }
 
       contexto.fecha = v.value;
       contexto.fechaStr =
         `${String(contexto.fecha.getDate()).padStart(2, '0')}/` +
         `${String(contexto.fecha.getMonth() + 1).padStart(2, '0')}/` +
         `${contexto.fecha.getFullYear()}`;
-
-      if (contexto.fecha.getDay() === 0) { 
-        return { siguiente: 'fecha', respuesta: "❌ No puedes agendar citas en domingo. Por favor elige otra fecha." };
-      } 
-      if (FERIADOS.includes(contexto.fechaStr)) {
-        return { siguiente: 'fecha', respuesta: "❌ Ese día es feriado y no atendemos. Por favor elige otra fecha." }; 
-      }
-
-      const hoy = new Date(); 
-      hoy.setHours(0,0,0,0); 
-      
-      const limite = new Date(hoy); 
-      limite.setDate(limite.getDate() + 14); 
-      if (contexto.fecha > limite) { 
-        return { 
-          siguiente: 'fecha', 
-          respuesta: "❌ Solo puedes agendar citas hasta 2 semanas desde hoy. Por favor elige una fecha más cercana." 
-        }; 
-      }
 
       // 👉 Generar lista de horarios disponibles
       const horariosDia = generarHorariosDia(contexto.fecha);

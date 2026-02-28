@@ -49,22 +49,37 @@ const Validators = {
     if (!fecha) return { ok: false, error: 'La fecha no es válida. Usa el formato DD/MM/AAAA.' };
 
     const hoy = new Date(); 
-    hoy.setHours(0,0,0,0); // normalizar
-    fecha.setHours(0,0,0,0); // normalizar también la fecha ingresada
+    hoy.setHours(0,0,0,0); 
+    fecha.setHours(0,0,0,0);
 
-    // Comparar día, mes y año directamente
-    if (
-      fecha.getDate() === hoy.getDate() &&
-      fecha.getMonth() === hoy.getMonth() &&
-      fecha.getFullYear() === hoy.getFullYear()
-    ) {
+    // Restricción: no mismo día
+    if (fecha.getTime() === hoy.getTime()) {
       return { ok: false, error: 'No puedes agendar citas el mismo día. Debes elegir una fecha con al menos 1 día de anticipación.' };
     }
 
+    // Restricción: no fechas pasadas
     if (fecha < hoy) {
       return { ok: false, error: 'No puedes agendar en fechas pasadas.' };
     }
 
+    // Restricción: no domingos
+    if (fecha.getDay() === 0) {
+      return { ok: false, error: 'No puedes agendar citas en domingo. Por favor elige otra fecha.' };
+    }
+
+    // Restricción: no feriados
+    const FERIADOS = ["01/01/2026","25/12/2026","16/02/2026","17/02/2026"];
+    const fechaStr = `${String(fecha.getDate()).padStart(2, '0')}/${String(fecha.getMonth() + 1).padStart(2, '0')}/${fecha.getFullYear()}`;
+    if (FERIADOS.includes(fechaStr)) {
+      return { ok: false, error: 'Ese día es feriado y no atendemos. Por favor elige otra fecha.' };
+    }
+
+    // Restricción: máximo 2 semanas
+    const limite = new Date(hoy);
+    limite.setDate(limite.getDate() + 14);
+    if (fecha > limite) {
+      return { ok: false, error: 'Solo puedes agendar citas hasta 2 semanas desde hoy. Por favor elige una fecha más cercana.' };
+    }
     return { ok: true, value: fecha };
   },
 

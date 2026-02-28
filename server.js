@@ -224,24 +224,44 @@ app.post('/webhook', async (req, res) => {
         }
         else if (agendaContext[sender]?.paso === 'consultar_menu') { 
           console.log("➡️ Entrando en flujo consultar_menu");
-          const v = Validators.menuOption(content.trim(), ['1','2']); 
+          const v = Validators.menuOption(content.trim(), ['1','2','3','4']); 
           if (!v.ok) { 
-            respuesta = v.error; 
+            respuesta = `❌ ${v.error}\n\n👉 Responde con 1, 2, 3 o 4.`; 
           } else {
-            if (v.value === '1') { 
-              agendaContext[sender] = { paso: 'nombre', nombre: '', motivo: '' }; 
-              respuesta = await agenda.iniciarAgenda(); 
-              if (!respuesta || respuesta.trim() === ""){
-                respuesta = "📝 Vamos a agendar tu cita. Por favor dime tu nombre completo:";
-              }
-            } 
-            if (v.value === '2') { 
-              respuesta = "👋 Gracias por conversar con Amalgama. ¡Que tengas un excelente día!";
-              delete agendaContext[sender];
-              delete menuContext[sender]; 
-            } 
-          } 
+            switch (v.value) {
+              case '1': // Modificar cita
+                const listadoMod = await modificar.listarCitasParaModificar(sender, pool);
+                respuesta = listadoMod.respuesta;
+                agendaContext[sender].paso = 'seleccion_cita';
+                agendaContext[sender].accion = 'modificar';
+                agendaContext[sender].citas = listadoMod.citas;
+                break;
+
+              case '2': // Cancelar cita
+                const listadoCanc = await cancelar.listarCitasParaCancelar(sender, pool);
+                respuesta = listadoCanc.respuesta;
+                agendaContext[sender].paso = 'seleccion_cita';
+                agendaContext[sender].accion = 'cancelar';
+                agendaContext[sender].citas = listadoCanc.citas;
+                break;
+
+              case '3': // Agendar nueva cita
+                agendaContext[sender] = { paso: 'nombre', nombre: '', motivo: '' };
+                respuesta = await agenda.iniciarAgenda();
+                if (!respuesta || respuesta.trim() === ""){
+                  respuesta = "📝 Vamos a agendar tu cita. Por favor dime tu nombre completo:";
+                }
+                break;
+
+              case '4': // Salir al menú principal
+                respuesta = "👋 Gracias por conversar con Amalgama. ¡Que tengas un excelente día!";
+                delete agendaContext[sender];
+                delete menuContext[sender]; 
+                break;
+            }
+          }
         }
+
         else {
           console.log("➡️ Entrando en menú principal");
           if (!menuContext[sender]) {

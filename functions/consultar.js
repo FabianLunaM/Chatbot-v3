@@ -55,10 +55,11 @@ module.exports = {
       respuesta += `${idx + 1}. ${formatFechaDia(fechaObj)} a las ${row.time}\n   Motivo: ${row.reason}\n   Estado: ${row.status}\n\n`;
     });
 
-    respuesta += "👉 ¿Deseas modificar o cancelar alguna cita? Responde con 'modificar' o 'cancelar'.\n\n" +
-                 "Si prefieres:\n" +
-                 "1️⃣ 📅 Agendar una nueva cita\n" +
-                 "2️⃣ ❌ Salir del chat";
+    respuesta += "👉 ¿Deseas modificar o cancelar alguna cita?\n\n" +
+                 "1️⃣ ✏️ Modificar una cita\n" + 
+                 "2️⃣ ❌ Cancelar una cita\n" + 
+                 "3️⃣ 📅 Agendar una nueva cita\n" + 
+                 "4️⃣ 🔙 Salir al menú principal";
 
     return { respuesta, citas: citasActivas };
   }
