@@ -139,7 +139,7 @@ module.exports = {
 
       contexto.horariosDisponibles = disponibles;
 
-      const lista = disponibles.map((h, idx) => `${idx+1}️⃣ ${h}`).join("\n");
+      const lista = disponibles.map((h, idx) => `${numeroEmoji(idx+1)} ${h}`).join("\n");
 
       return {
         siguiente: 'hora',
@@ -154,6 +154,7 @@ module.exports = {
     // ------------------------------
     // 5. HORA (selección por número)
     // ------------------------------
+
     if (paso === 'hora') {
       const idx = parseInt(dato.trim(), 10) - 1;
       if (isNaN(idx) || idx < 0 || idx >= contexto.horariosDisponibles.length) {
