@@ -84,6 +84,16 @@ app.post('/webhook', async (req, res) => {
     if (content && sender) {
       console.log(`📩 Mensaje recibido de ${sender}: ${content}`);
 
+      // 👉 Insertar interacción en la BD 
+      try { await pool.query( 
+         'INSERT INTO interactions (message_in, sender, pushname, created_at) VALUES ($1, $2, $3, NOW())', 
+         [content, sender, pushName] 
+        ); 
+        console.log(`🗄️ Interacción guardada en BD: mensaje="${content}", sender="${sender}", pushName="${pushName}"`); 
+       } catch (err) { 
+       console.error("❌ Error insertando interacción en BD:", err.message); 
+      }
+     
       const check = await pool.query('SELECT COUNT(*) FROM interactions WHERE sender = $1',[sender]);
       const count = parseInt(check.rows[0].count, 10);
 

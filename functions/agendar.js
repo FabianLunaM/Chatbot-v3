@@ -1,6 +1,8 @@
 // functions/agendar.js
 
 const { Validators, parseFechaStr } = require('./validators');
+const { numeroEmoji } = require('./numeroEmoji');
+
 
 const DIAS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
 
@@ -155,7 +157,8 @@ module.exports = {
     if (paso === 'hora') {
       const idx = parseInt(dato.trim(), 10) - 1;
       if (isNaN(idx) || idx < 0 || idx >= contexto.horariosDisponibles.length) {
-        const lista = contexto.horariosDisponibles.map((h, i) => `${i+1}️⃣ ${h}`).join("\n");
+        //const lista = contexto.horariosDisponibles.map((h, i) => `${i+1}️⃣ ${h}`).join("\n");
+        const lista = contexto.horariosDisponibles.map((h, idx) => `${numeroEmoji(idx+1)} ${h}`).join("\n");
         return { siguiente: 'hora', respuesta: `❌ Número inválido. Selecciona un horario de la lista:\n\n${lista}` };
       }
 
