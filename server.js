@@ -304,8 +304,16 @@ app.post('/webhook', async (req, res) => {
         respuesta = "⚠️ Hubo un error en el flujo. Escribe '1' para agendar una cita o '2' para salir."; 
       }
 
-      // Reiniciar temporizador de inactividad
-      iniciarTimeout(sender);
+      // Reiniciar temporizador de inactividad SOLO si el chat sigue activo
+      if (agendaContext[sender] || menuContext[sender]) {
+        iniciarTimeout(sender);
+      } else {
+        // Si el flujo terminó, limpiar cualquier timeout pendiente
+        if (chatTimeouts[sender]) {
+          clearTimeout(chatTimeouts[sender]);
+          delete chatTimeouts[sender];
+         }
+       }
 
       // 👇 Enviar solo una vez
       await enviarMensaje(sender, respuesta);

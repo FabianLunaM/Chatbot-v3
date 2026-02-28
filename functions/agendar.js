@@ -112,7 +112,7 @@ module.exports = {
       const v = Validators.fecha(dato);
       const FERIADOS = ["01/01/2026","25/12/2026","16/02/2026","17/02/2026"];
       if (!v.ok)
-        return { siguiente: 'fecha', respuesta: `❌ ${v.error}\nEjemplo: 11/12/2025` };
+        return { siguiente: 'fecha', respuesta: `❌ ${v.error}\nEjemplo: 11/12/2026` };
 
       contexto.fecha = v.value;
       contexto.fechaStr =
@@ -129,11 +129,6 @@ module.exports = {
 
       const hoy = new Date(); 
       hoy.setHours(0,0,0,0); 
-      
-      if (contexto.fecha <= hoy) { 
-        return { siguiente: 'fecha', respuesta: "❌ No puedes agendar citas para el mismo día. Debes elegir una fecha con al menos 1 día de anticipación.\nEjemplo: 28/02/2026" 
-        }; 
-      }
       
       const limite = new Date(hoy); 
       limite.setDate(limite.getDate() + 14); 

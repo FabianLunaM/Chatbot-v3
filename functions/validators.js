@@ -50,6 +50,10 @@ const Validators = {
     const hoy = new Date(); 
     hoy.setHours(0,0,0,0); // normalizar
     
+    if (fecha.getTime() === hoy.getTime()) { 
+      return { ok: false, error: 'No puedes agendar citas el mismo día. Debes elegir una fecha con al menos 1 día de anticipación.' };
+     }
+
     if (fecha < hoy) { 
       return { ok: false, error: 'No puedes agendar en fechas pasadas.' };
      }
