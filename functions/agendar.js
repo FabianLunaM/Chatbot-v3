@@ -178,6 +178,7 @@ module.exports = {
     // 6. CONFIRMACIÓN
     // ------------------------------
     if (paso === 'confirmacion') {
+      console.log("➡️ Contexto recibido en confirmación:", contexto);
       const v = Validators.menuOption(dato, ['1','2']);
       if (!v.ok)
         return { siguiente: 'confirmacion', respuesta: `❌ ${v.error}\n\n👉 Responde con 1 o 2.` };
