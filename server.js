@@ -177,28 +177,20 @@ app.post('/webhook', async (req, res) => {
             // ❌ No concatenes nada aquí, la respuesta ya está lista desde agendar.js
           }
         // --- Confirmacion ---
+
         } else if (agendaContext[sender]?.paso === 'confirmacion') {
-          console.log(`➡️ Entrando en flujo confirmacion (${agendaContext[sender].accion})`);
-          const v = Validators.menuOption(content.trim(), ['1','2']);
-          if (!v.ok) respuesta = `❌ ${v.error}\n\n👉 Responde con 1 (Sí) o 2 (No).`;
-          else {
-            if (v.value === '1') {
-              if (agendaContext[sender].accion === 'cancelar') {
-                respuesta = await cancelar.aplicarCancelacion(pool, agendaContext[sender].citaId);
-              } else if (agendaContext[sender].accion === 'modificar') {
-                respuesta = await modificar.aplicarModificacion(pool, agendaContext[sender].citaId, agendaContext[sender].nuevaFechaObj, agendaContext[sender].nuevaHora);
-              }
-              respuesta += "\n\n👋 Gracias por conversar con Amalgama. ¡Que tengas un excelente día!";
-              delete agendaContext[sender];
-              delete menuContext[sender];
-            } else {
-              respuesta = mostrarMenuPrincipal(pushName);
-              delete agendaContext[sender];
-              menuContext[sender] = true;
-            }
+          console.log("➡️ Entrando en flujo agendar: paso confirmacion");
+          const resultado = await agenda.procesarPaso(sender, pool, 'confirmacion', content.trim(), agendaContext[sender]);
+
+          respuesta = resultado?.respuesta || "⚠️ Error: no se generó respuesta en confirmación.";
+          agendaContext[sender].paso = resultado?.siguiente;
+
+          if (resultado?.siguiente === 'completo') {
+            delete agendaContext[sender];
+            delete menuContext[sender];
           }
-        } 
-       
+        }
+
         // --- Flujo de consultar_menu ---
         else if (agendaContext[sender]?.paso === 'consultar_menu') {
         console.log("➡️ Entrando en flujo consultar_menu");
