@@ -9,6 +9,8 @@ const consultar = require('./functions/consultar');
 const modificar = require('./functions/modificar'); 
 const cancelar = require('./functions/cancelar'); 
 const { Validators } = require('./functions/validators'); 
+const { consultarDialogflow } = require('./functions/preguntas');
+
 
 const app = express();
 app.use(cors());
@@ -228,6 +230,42 @@ app.post('/webhook', async (req, res) => {
           }
         }
       }
+
+      // --- Flujo de consultas abiertas ---
+      else if (agendaContext[sender]?.paso === 'consulta_abierta') {
+        console.log("➡️ Entrando en flujo consulta abierta");
+        const respuestaDialogflow = await consultarDialogflow(sender, content.trim());
+
+        respuesta = respuestaDialogflow + "\n\n👉 ¿Qué deseas hacer ahora?\n1️⃣ Regresar al menú principal\n2️⃣ Realizar otra consulta\n3️⃣ Finalizar la conversación";
+
+        agendaContext[sender].paso = 'consulta_menu';
+      }
+
+      // --- Flujo del mini menú después de la consulta ---
+      else if (agendaContext[sender]?.paso === 'consulta_menu') {
+        const v = Validators.menuOption(content.trim(), ['1','2','3']);
+        if (!v.ok) {
+          respuesta = `❌ ${v.error}\n\n👉 Responde con 1, 2 o 3.`;
+        } else {
+          switch (v.value) {
+            case '1':
+              respuesta = mostrarMenuPrincipal(pushName);
+              menuContext[sender] = true;
+              delete agendaContext[sender];
+              break;
+            case '2':
+              agendaContext[sender].paso = 'consulta_abierta';
+              respuesta = "💡 Escribe tu nueva consulta:";
+              break;
+            case '3':
+              respuesta = "👋 Gracias por conversar con Amalgama. ¡Que tengas un excelente día!";
+              delete agendaContext[sender];
+              delete menuContext[sender];
+              break;
+          }
+        }
+      }
+
         // --- Menú principal ---
         else {
           console.log("➡️ Entrando en menú principal");
@@ -278,7 +316,8 @@ app.post('/webhook', async (req, res) => {
                   agendaContext[sender] = { paso: 'consultar_menu', citas: consulta.citas };
                   break;
                 case '3':
-                  console.log("➡️ Usuario eligió consultar servicios");
+                  console.log("➡️ Usuario eligió preguntas abiertas (Dialogflow)");
+                  agendaContext[sender] = { paso: 'consulta_abierta' };
                   respuesta = "💡 Puedes consultar nuestros servicios odontológicos. ¿Qué deseas saber?";
                   break;
               }
@@ -307,6 +346,9 @@ app.post('/webhook', async (req, res) => {
 
   res.send('ok');
 });
+
+
+
 
 // --- Configuración del servidor ---
 const PORT = process.env.PORT || 3000;
