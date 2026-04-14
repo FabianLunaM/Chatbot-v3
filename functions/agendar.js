@@ -226,10 +226,11 @@ module.exports = {
         }     
 
         // Registrar cita
-        const fechaISO = contexto.fecha.toISOString().split('T')[0]; // YYYY-MM-DD 
+        const fechaObj = (contexto.fecha instanceof Date) ? contexto.fecha : new Date(contexto.fecha);
+        const fechaISO = fechaObj.toISOString().split('T')[0]; // YYYY-MM-DD 
         const horaStr = contexto.horaStr; // "09:00"
-        
-        console.log("➡️ Insertando cita:", patientId, contexto.fecha, contexto.horaStr, contexto.motivo);
+
+        console.log("➡️ Insertando cita:", patientId, fechaObj, horaStr, contexto.motivo);
         await pool.query(
           'INSERT INTO appointments (patient_id, date, time, reason, duration, status) VALUES ($1, $2, $3, $4, $5, $6)',
           [patientId, fechaISO, horaStr, contexto.motivo, 30, 'pendiente']
@@ -239,10 +240,11 @@ module.exports = {
           siguiente: 'completo',
           respuesta:
             `🎉 La cita se agendó para el paciente *${contexto.nombre}*, con el número de celular *${contexto.telefono}*, para la fecha:\n\n` +
-            `*${formatFechaDia(contexto.fecha)}* a las *${contexto.horaStr}*.\n\n` +
+            `*${formatFechaDia(fechaObj)}* a las *${horaStr}*.\n\n` +
             "Recuerda que puedes reprogramar o cancelar la cita hasta con 24 horas de anticipación.\n\n" +
             "Gracias por contactarte con el Consultorio Dental Ortodent."
         };
+
       }
 
       if (v.value === '2') {
