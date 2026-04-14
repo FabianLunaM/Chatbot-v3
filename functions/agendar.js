@@ -225,8 +225,18 @@ module.exports = {
           };
         }     
 
+        // ✅ Robustez: tomar la fecha desde cualquiera de los campos posibles
+        const fechaBase = contexto.fecha || contexto.nuevaFechaObj || contexto.fechaObj;
+        const fechaObj = (fechaBase instanceof Date) ? fechaBase : new Date(fechaBase);
+
+        if (isNaN(fechaObj)) {
+          return {
+            siguiente: 'completo',
+            respuesta: "❌ La fecha recibida no es válida. Intenta nuevamente."
+          };
+        }
+
         // Registrar cita
-        const fechaObj = (contexto.fecha instanceof Date) ? contexto.fecha : new Date(contexto.fecha);
         const fechaISO = fechaObj.toISOString().split('T')[0]; // YYYY-MM-DD 
         const horaStr = contexto.horaStr; // "09:00"
 
