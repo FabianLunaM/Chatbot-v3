@@ -182,15 +182,37 @@ app.post('/webhook', async (req, res) => {
 
         } else if (agendaContext[sender]?.paso === 'confirmacion') {
           console.log("➡️ Entrando en flujo agendar: paso confirmacion");
-          const resultado = await agenda.procesarPaso(sender, pool, 'confirmacion', content.trim(), agendaContext[sender]);
+            if (agendaContext[sender].accion === 'cancelar') {
+              // flujo cancelar
+              const resultado = await cancelar.aplicarCancelacion(pool, agendaContext[sender].citaId);
+              respuesta = resultado.respuesta || resultado;
+              agendaContext[sender].paso = 'completo';
+              delete agendaContext[sender];
+              delete menuContext[sender];
 
-          respuesta = resultado?.respuesta || "⚠️ Error: no se generó respuesta en confirmación.";
-          agendaContext[sender].paso = resultado?.siguiente;
+            } else if (agendaContext[sender].accion === 'modificar') {
+              // flujo modificar
+              const resultado = await modificar.aplicarModificacion(
+                pool,
+                agendaContext[sender].citaId,
+                agendaContext[sender].nuevaFechaObj,
+                agendaContext[sender].nuevaHora
+              );
+              respuesta = resultado;
+              agendaContext[sender].paso = 'completo';
+              delete agendaContext[sender];
+              delete menuContext[sender];
 
-          if (resultado?.siguiente === 'completo') {
-            delete agendaContext[sender];
-            delete menuContext[sender];
-          }
+            } else {
+              // flujo agendar
+              const resultado = await agenda.procesarPaso(sender, pool, 'confirmacion', content.trim(), agendaContext[sender]);
+              respuesta = resultado?.respuesta || "⚠️ Error: no se generó respuesta en confirmación.";
+              agendaContext[sender].paso = resultado?.siguiente;
+              if (resultado?.siguiente === 'completo') {
+                delete agendaContext[sender];
+                delete menuContext[sender];
+              }
+            }
         }
 
         // --- Flujo de consultar_menu ---
