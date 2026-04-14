@@ -32,9 +32,8 @@ module.exports = {
     const salirNum = result.rows.length + 2;
 
     respuesta += `${numeroEmoji(regresarNum)} 🔙 Regresar al menú principal\n`;
-    respuesta += `${numeroEmoji(salirNum)} ❌ Finalizar la conversación`;
+    respuesta += `${numeroEmoji(salirNum)} 🚪 Finalizar la conversación`;
 
-    // ✅ Convertir date a objeto Date antes de devolver
     return { 
       respuesta, 
       citas: result.rows.map(row => ({ ...row, date: new Date(row.date) })) 
@@ -43,7 +42,7 @@ module.exports = {
 
   pedirConfirmacionCancelacion: (fechaObj, horaStr) => {
     const fecha = (fechaObj instanceof Date) ? fechaObj : new Date(fechaObj);
-    return `⚠️ ¿Confirmas que deseas cancelar la cita del día ${formatFechaDia(fecha)} a las ${horaStr}?\n\n1️⃣ Sí, cancelar y finalizar chat\n2️⃣ No, regresar al menú principal`;
+    return `⚠️ ¿Confirmas que deseas cancelar la cita del día ${formatFechaDia(fecha)} a las ${horaStr}?\n\n1️⃣ Sí, cancelar\n2️⃣ No, regresar al menú principal`;
   },
 
   aplicarCancelacion: async (pool, citaId) => {
@@ -51,6 +50,9 @@ module.exports = {
       'UPDATE appointments SET status = $1 WHERE id = $2',
       ['cancelada', citaId]
     );
-    return "✅ La cita ha sido cancelada correctamente.";
+    return {
+      siguiente: 'completo',
+      respuesta: "✅ La cita ha sido cancelada correctamente.\n\nGracias por contactarte con el Consultorio Dental Ortodent."
+    };
   }
 };
