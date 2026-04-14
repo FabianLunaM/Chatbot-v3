@@ -237,8 +237,17 @@ module.exports = {
         }
 
         // Registrar cita
+        
+        const horaStr = contexto.horaStr || contexto.nuevaHora;
+
+        if (!horaStr) {
+          return {
+            siguiente: 'completo',
+            respuesta: "❌ No se recibió una hora válida. Intenta nuevamente."
+          };
+        }
+
         const fechaISO = fechaObj.toISOString().split('T')[0]; // YYYY-MM-DD 
-        const horaStr = contexto.horaStr; // "09:00"
 
         console.log("➡️ Insertando cita:", patientId, fechaObj, horaStr, contexto.motivo);
         await pool.query(
