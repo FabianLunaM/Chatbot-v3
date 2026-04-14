@@ -74,10 +74,15 @@ module.exports = {
   },
 
   aplicarModificacion: async (pool, citaId, nuevaFechaObj, nuevaHoraStr) => {
-    await pool.query(
-      'UPDATE appointments SET date = $1, time = $2 WHERE id = $3',
-      [nuevaFechaObj, nuevaHoraStr, citaId]
-    );
-    return `✅ La cita ha sido reprogramada para el día ${formatFechaDia(nuevaFechaObj)} a las ${nuevaHoraStr}.`;
+      // Asegurar que nuevaFechaObj sea un objeto Date
+      const fechaObj = (nuevaFechaObj instanceof Date) ? nuevaFechaObj : new Date(nuevaFechaObj);
+      const fechaISO = fechaObj.toISOString().split('T')[0]; // YYYY-MM-DD
+
+      await pool.query(
+        'UPDATE appointments SET date = $1, time = $2 WHERE id = $3',
+        [fechaISO, nuevaHoraStr, citaId]
+      );
+
+      return `✅ La cita ha sido reprogramada para el día ${formatFechaDia(fechaObj)} a las ${nuevaHoraStr}.`;
   }
 };
