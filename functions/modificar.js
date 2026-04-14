@@ -70,8 +70,10 @@ module.exports = {
   },
 
   pedirConfirmacionModificacion: (fechaObj, horaStr) => {
-    return `⚠️ ¿Confirmas que deseas reprogramar la cita para el día ${formatFechaDia(fechaObj)} a las ${horaStr}?\n\n1️⃣ Sí, modificar y finalizar chat\n2️⃣ No, regresar al menú principal`;
+    const fecha = (fechaObj instanceof Date) ? fechaObj : new Date(fechaObj);
+    return `⚠️ ¿Confirmas que deseas reprogramar la cita para el día ${formatFechaDia(fecha)} a las ${horaStr}?\n\n1️⃣ Sí, modificar y finalizar chat\n2️⃣ No, regresar al menú principal`;
   },
+
 
   aplicarModificacion: async (pool, citaId, nuevaFechaObj, nuevaHoraStr) => {
       // Asegurar que nuevaFechaObj sea un objeto Date

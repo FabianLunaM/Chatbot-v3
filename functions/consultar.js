@@ -22,7 +22,7 @@ module.exports = {
       [sender]
     );
 
-    // 3️⃣ Filtrar citas futuras (>= hoy)
+    // 3️⃣ Filtrar citas futuras (>= hoy) y convertir fechas a objetos Date
     const hoy = new Date();
     hoy.setHours(0,0,0,0); // normalizar a inicio de día
     
@@ -35,6 +35,11 @@ module.exports = {
         console.error("❌ Error parseando fecha:", row.date, err);
         return false;
       }
+    }).map(row => {
+      return {
+        ...row,
+        date: new Date(row.date) // 👈 convertir aquí
+      };
     });
 
     // 4️⃣ Si no hay citas activas
@@ -51,8 +56,7 @@ module.exports = {
     // 5️⃣ Construir respuesta con citas activas
     let respuesta = "📅 Estas son tus citas activas:\n\n";
     citasActivas.forEach((row, idx) => {
-      const fechaObj = new Date(row.date);
-      respuesta += `${idx + 1}. ${formatFechaDia(fechaObj)} a las ${row.time}\n   Motivo: ${row.reason}\n   Estado: ${row.status}\n\n`;
+      respuesta += `${idx + 1}. ${formatFechaDia(row.date)} a las ${row.time}\n   Motivo: ${row.reason}\n   Estado: ${row.status}\n\n`;
     });
 
     respuesta += "👉 ¿Deseas modificar o cancelar alguna cita?\n\n" +
