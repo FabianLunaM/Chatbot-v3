@@ -32,7 +32,11 @@ module.exports = {
     respuesta += `${numeroEmoji(regresarNum)} 🔙 Regresar al menú principal\n`; 
     respuesta += `${numeroEmoji(salirNum)} 🚪 Finalizar la conversación`;
 
-    return { respuesta, citas: result.rows };
+    // ✅ Convertir date a objeto Date antes de devolver
+    return { 
+      respuesta, 
+      citas: result.rows.map(row => ({ ...row, date: new Date(row.date) })) 
+    };
   },
 
   pedirNuevaFecha: () => {
@@ -74,17 +78,16 @@ module.exports = {
     return `⚠️ ¿Confirmas que deseas reprogramar la cita para el día ${formatFechaDia(fecha)} a las ${horaStr}?\n\n1️⃣ Sí, modificar y finalizar chat\n2️⃣ No, regresar al menú principal`;
   },
 
-
   aplicarModificacion: async (pool, citaId, nuevaFechaObj, nuevaHoraStr) => {
-      // Asegurar que nuevaFechaObj sea un objeto Date
-      const fechaObj = (nuevaFechaObj instanceof Date) ? nuevaFechaObj : new Date(nuevaFechaObj);
-      const fechaISO = fechaObj.toISOString().split('T')[0]; // YYYY-MM-DD
+    // Asegurar que nuevaFechaObj sea un objeto Date
+    const fechaObj = (nuevaFechaObj instanceof Date) ? nuevaFechaObj : new Date(nuevaFechaObj);
+    const fechaISO = fechaObj.toISOString().split('T')[0]; // YYYY-MM-DD
 
-      await pool.query(
-        'UPDATE appointments SET date = $1, time = $2 WHERE id = $3',
-        [fechaISO, nuevaHoraStr, citaId]
-      );
+    await pool.query(
+      'UPDATE appointments SET date = $1, time = $2 WHERE id = $3',
+      [fechaISO, nuevaHoraStr, citaId]
+    );
 
-      return `✅ La cita ha sido reprogramada para el día ${formatFechaDia(fechaObj)} a las ${nuevaHoraStr}.`;
+    return `✅ La cita ha sido reprogramada para el día ${formatFechaDia(fechaObj)} a las ${nuevaHoraStr}.`;
   }
 };

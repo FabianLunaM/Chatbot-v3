@@ -34,14 +34,17 @@ module.exports = {
     respuesta += `${numeroEmoji(regresarNum)} 🔙 Regresar al menú principal\n`;
     respuesta += `${numeroEmoji(salirNum)} ❌ Finalizar la conversación`;
 
-    return { respuesta, citas: result.rows };
+    // ✅ Convertir date a objeto Date antes de devolver
+    return { 
+      respuesta, 
+      citas: result.rows.map(row => ({ ...row, date: new Date(row.date) })) 
+    };
   },
 
   pedirConfirmacionCancelacion: (fechaObj, horaStr) => {
     const fecha = (fechaObj instanceof Date) ? fechaObj : new Date(fechaObj);
     return `⚠️ ¿Confirmas que deseas cancelar la cita del día ${formatFechaDia(fecha)} a las ${horaStr}?\n\n1️⃣ Sí, cancelar y finalizar chat\n2️⃣ No, regresar al menú principal`;
   },
-
 
   aplicarCancelacion: async (pool, citaId) => {
     await pool.query(
